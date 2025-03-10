@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AgentsGrid } from './agents-grid';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +25,18 @@ export default function AgentsInterface() {
   const [initialized, setInitialized] = useState<boolean>(false);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
 
+  // Load API key from environment variables on component mount
+  useEffect(() => {
+    const envApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+    if (envApiKey) {
+      setApiKey(envApiKey);
+      // Optionally auto-initialize if API key is available
+      if (!initialized && !loading) {
+        initializeAgencyWithKey(envApiKey);
+      }
+    }
+  }, [initialized, loading]);
+
   // Initialize the agency with the API key
   const initializeAgency = async () => {
     if (!apiKey) {
@@ -32,11 +44,16 @@ export default function AgentsInterface() {
       return;
     }
 
+    initializeAgencyWithKey(apiKey);
+  };
+
+  // Helper function to initialize with a specific key
+  const initializeAgencyWithKey = async (key: string) => {
     setLoading(true);
     try {
       // Create a new agency with the OpenAI API key
       const newAgency = new Agency({
-        apiKey,
+        apiKey: key,
         // Add any other configuration options here
       });
 
@@ -148,7 +165,9 @@ export default function AgentsInterface() {
           <CardHeader>
             <CardTitle>Initialize AI Agents</CardTitle>
             <CardDescription>
-              Enter your OpenAI API key to access the AI agents.
+              {apiKey ? 
+                "API key loaded from environment. Click initialize to start." : 
+                "Enter your OpenAI API key to access the AI agents."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -168,13 +187,15 @@ export default function AgentsInterface() {
                 <input
                   id="api-key"
                   type="password"
-                  placeholder="sk-..."
+                  placeholder={apiKey ? "••••••••••••••••••••••••••••••••" : "sk-..."}
                   className="w-full p-2 border rounded-md"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                 />
                 <p className="text-xs text-gray-500">
-                  Your API key is used locally and never stored on our servers.
+                  {apiKey ? 
+                    "API key loaded from environment variables. You can use this key or enter a different one." : 
+                    "Your API key is used locally and never stored on our servers."}
                 </p>
               </div>
               <Button onClick={initializeAgency} disabled={loading}>
