@@ -12,6 +12,7 @@ import { ContentCreationTeam } from '@/lib/agency-swarm/teams/content-creation-t
 import { InfluencerManagementTeam } from '@/lib/agency-swarm/teams/influencer-management-team';
 import { AnalyticsTeam } from '@/lib/agency-swarm/teams/analytics-team';
 import { Agency } from '@/lib/agency-swarm/mock-agency-swarm';
+import { ContentSchedulerAgent } from './content-scheduler-agent';
 
 export default function AgentsInterface() {
   const [apiKey, setApiKey] = useState<string>('');
@@ -129,8 +130,15 @@ export default function AgentsInterface() {
 
   const handleSelectAgent = (agent: any) => {
     setSelectedAgent(agent);
-    // Pre-fill the prompt with a template based on the selected agent
-    setPrompt(`I need help with ${agent.subject.toLowerCase()} using the ${agent.name}. Please assist me with:`);
+    
+    // Special handling for Content Scheduler agent
+    if (agent.id === 'content-scheduler') {
+      // No need to pre-fill prompt for Content Scheduler as it has its own UI
+      setPrompt('');
+    } else {
+      // Pre-fill the prompt with a template based on the selected agent
+      setPrompt(`I need help with ${agent.subject.toLowerCase()} using the ${agent.name}. Please assist me with:`);
+    }
   };
 
   return (
@@ -227,45 +235,51 @@ export default function AgentsInterface() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Error</AlertTitle>
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="prompt" className="text-sm font-medium">
-                      Your Request
-                    </label>
-                    <Textarea
-                      id="prompt"
-                      placeholder="Describe what you need help with..."
-                      className="min-h-[100px]"
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                    />
-                  </div>
-
-                  <Button onClick={handleSubmit} disabled={loading} className="w-full">
-                    {loading ? "Processing..." : "Submit Request"}
-                  </Button>
-
-                  {response && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                      <h3 className="font-medium mb-2">Response:</h3>
-                      <div className="whitespace-pre-wrap text-sm">{response}</div>
+                {selectedAgent.id === 'content-scheduler' ? (
+                  <ContentSchedulerAgent />
+                ) : (
+                  <div className="space-y-4">
+                    {error && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="prompt" className="text-sm font-medium">
+                        Your Request
+                      </label>
+                      <Textarea
+                        id="prompt"
+                        placeholder="Describe what you need help with..."
+                        className="min-h-[100px]"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                      />
                     </div>
-                  )}
-                </div>
+
+                    <Button onClick={handleSubmit} disabled={loading} className="w-full">
+                      {loading ? "Processing..." : "Submit Request"}
+                    </Button>
+
+                    {response && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                        <h3 className="font-medium mb-2">Response:</h3>
+                        <div className="whitespace-pre-wrap text-sm">{response}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <p className="text-xs text-gray-500">
-                  Powered by Agency Swarm and OpenAI
-                </p>
-              </CardFooter>
+              {selectedAgent.id !== 'content-scheduler' && (
+                <CardFooter className="flex justify-between">
+                  <p className="text-xs text-gray-500">
+                    Powered by Agency Swarm and OpenAI
+                  </p>
+                </CardFooter>
+              )}
             </Card>
           )}
         </>

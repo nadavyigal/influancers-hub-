@@ -16,7 +16,7 @@ interface AgentCardProps {
 
 export function AgentCard({ name, description, subject, icon, usageCount, onClick }: AgentCardProps) {
   return (
-    <Card className="w-full h-full transition-all hover:shadow-md">
+    <Card className="w-full h-full flex flex-col transition-all hover:shadow-md">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary">
@@ -28,10 +28,10 @@ export function AgentCard({ name, description, subject, icon, usageCount, onClic
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pb-2">
+      <CardContent className="pb-2 flex-grow">
         <p className="text-sm text-gray-600">{description}</p>
       </CardContent>
-      <CardFooter className="flex justify-between items-center pt-2">
+      <CardFooter className="flex justify-between items-center pt-2 mt-auto">
         {usageCount !== undefined && (
           <p className="text-xs text-gray-500">{usageCount} uses</p>
         )}

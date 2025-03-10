@@ -11,7 +11,8 @@ import {
   FiClipboard, 
   FiCheckSquare, 
   FiUsers, 
-  FiDatabase 
+  FiDatabase,
+  FiCalendar
 } from 'react-icons/fi';
 
 // Define the agent data structure
@@ -23,6 +24,7 @@ interface Agent {
   icon: React.ReactNode;
   team: string;
   usageCount?: number;
+  canSelectReels?: boolean;
 }
 
 // Create a list of agents based on the existing agency-swarm agents
@@ -53,6 +55,16 @@ const agents: Agent[] = [
     icon: <FiCheckSquare className="w-5 h-5" />,
     team: 'content',
     usageCount: 76
+  },
+  {
+    id: 'content-scheduler',
+    name: 'Content Scheduler',
+    subject: 'Content Creation',
+    description: 'Schedules content for optimal posting times across platforms to maximize audience engagement.',
+    icon: <FiCalendar className="w-5 h-5" />,
+    team: 'content',
+    usageCount: 85,
+    canSelectReels: true
   },
   {
     id: 'influencer-research',
@@ -125,15 +137,16 @@ export function AgentsGrid({ onSelectAgent, selectedTeam }: AgentsGridProps) {
     <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredAgents.map((agent) => (
-          <AgentCard
-            key={agent.id}
-            name={agent.name}
-            subject={agent.subject}
-            description={agent.description}
-            icon={agent.icon}
-            usageCount={agent.usageCount}
-            onClick={() => onSelectAgent && onSelectAgent(agent)}
-          />
+          <div key={agent.id} className="h-full">
+            <AgentCard
+              name={agent.name}
+              subject={agent.subject}
+              description={agent.description}
+              icon={agent.icon}
+              usageCount={agent.usageCount}
+              onClick={() => onSelectAgent && onSelectAgent(agent)}
+            />
+          </div>
         ))}
       </div>
     </div>
