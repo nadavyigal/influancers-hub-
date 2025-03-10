@@ -10,6 +10,7 @@ A comprehensive platform for managing social media influencer activities, conten
 - Notification system
 - Dashboard with analytics
 - Responsive UI built with Next.js and Tailwind CSS
+- AI-powered assistance with Agency Swarm integration
 
 ## Tech Stack
 
@@ -18,6 +19,7 @@ A comprehensive platform for managing social media influencer activities, conten
 - **Authentication**: Firebase Auth
 - **Database**: Firestore
 - **Storage**: Firebase Storage
+- **AI**: Agency Swarm, OpenAI
 - **Deployment**: Vercel (recommended)
 
 ## Getting Started
@@ -26,6 +28,7 @@ A comprehensive platform for managing social media influencer activities, conten
 
 - Node.js 18+ and npm
 - Firebase account
+- OpenAI API key (for AI Assistant features)
 
 ### Installation
 
@@ -49,6 +52,9 @@ A comprehensive platform for managing social media influencer activities, conten
    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+   
+   # Optional: For AI Assistant features
+   # OPENAI_API_KEY=your_openai_api_key
    ```
 
 4. Run the development server:
@@ -65,6 +71,23 @@ A comprehensive platform for managing social media influencer activities, conten
 3. Create a Firestore database
 4. Set up Firebase Storage
 5. Create the necessary Firestore indexes for queries
+
+## AI Assistant
+
+The platform includes an AI Assistant powered by [Agency Swarm](https://github.com/VRSEN/agency-swarm), which provides:
+
+- Content creation assistance (ideas, writing, review)
+- Influencer management (research, campaign planning, outreach)
+- Analytics and insights
+
+To use the AI Assistant:
+1. Navigate to the AI Assistant page
+2. Enter your OpenAI API key
+3. Select a team based on your needs
+4. Describe your request
+5. Review and implement the suggestions
+
+For more details, see the [Agency Swarm integration documentation](lib/agency-swarm/README.md).
 
 ## License
 

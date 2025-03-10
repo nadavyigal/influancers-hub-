@@ -1,5 +1,5 @@
 import type React from "react"
-import { BarChart3, Home, Settings, Users, Wrench, Send, LogOut, HelpCircle, Instagram, PlusCircle, FileVideo, Layers } from "lucide-react"
+import { BarChart3, Home, Settings, Users, Wrench, Send, LogOut, HelpCircle, Instagram, PlusCircle, FileVideo, Layers, Bot } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
@@ -34,6 +34,7 @@ export function Sidebar({ open }: SidebarProps) {
             <NavItem icon={PlusCircle} label="Create Content" href="/create" open={open} active={pathname === '/create'} />
             <NavItem icon={Layers} label="My Content" href="/dashboard/content" open={open} active={pathname === '/dashboard/content'} />
             <NavItem icon={Instagram} label="Instagram Analytics" href="/instagram" open={open} active={pathname === '/instagram'} />
+            <NavItem icon={Bot} label="AI Assistant" href="/ai-assistant" open={open} active={pathname === '/ai-assistant'} />
           </nav>
         </div>
         
