@@ -3,11 +3,8 @@
 import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
-import { Header } from "@/components/header"
-import { Sidebar } from "@/components/sidebar"
-import { useState } from "react"
 
 export default function DashboardLayout({
   children,
@@ -16,27 +13,26 @@ export default function DashboardLayout({
 }) {
   const { user, userProfile, loading } = useAuth()
   const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
-    if (!loading) {
+    // Only handle redirects if not already redirecting to prevent loops
+    if (!loading && !isRedirecting) {
       // If not authenticated, redirect to login
       if (!user) {
+        setIsRedirecting(true)
         router.push("/login")
         return
       }
       
       // If onboarding is not complete, redirect to onboarding
       if (userProfile && !userProfile.isOnboardingComplete) {
+        setIsRedirecting(true)
         router.push("/onboarding")
         return
       }
     }
-  }, [user, userProfile, loading, router])
-
-  const toggleSidebar = () => {
-    setSidebarOpen(prev => !prev)
-  }
+  }, [user, userProfile, loading, router, isRedirecting])
 
   if (loading) {
     return (
@@ -46,19 +42,20 @@ export default function DashboardLayout({
     )
   }
 
+  if (isRedirecting) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2 text-muted-foreground">Redirecting...</span>
+      </div>
+    )
+  }
+
   if (!user || (userProfile && !userProfile.isOnboardingComplete)) {
     return null
   }
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar open={sidebarOpen} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Header toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </div>
-  )
+  // Simply render the children without additional layout elements
+  // since the Sidebar and Header are already provided by the LayoutContent component
+  return children
 } 

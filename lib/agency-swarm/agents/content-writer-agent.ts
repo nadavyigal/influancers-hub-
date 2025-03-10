@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Content Writer Agent - responsible for writing content based on ideas
 export const ContentWriterAgent = new Agent({

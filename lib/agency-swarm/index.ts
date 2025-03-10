@@ -1,15 +1,14 @@
-import { Agency } from 'agency-swarm';
+import { Agency } from './mock-agency-swarm';
 import { ContentCreationTeam } from './teams/content-creation-team';
 import { InfluencerManagementTeam } from './teams/influencer-management-team';
 import { AnalyticsTeam } from './teams/analytics-team';
 
 // Initialize the Influencers Hub Agency
 export const initAgencySwarm = async (apiKey: string) => {
-  // Create the agency with the provided OpenAI API key
+  // Create a new agency with the OpenAI API key
   const agency = new Agency({
-    name: "Influencers Hub Agency",
-    description: "An agency that helps manage influencer marketing campaigns, content creation, and analytics.",
-    openAIApiKey: apiKey,
+    apiKey,
+    // Add any other configuration options here
   });
 
   // Add teams to the agency
@@ -17,10 +16,19 @@ export const initAgencySwarm = async (apiKey: string) => {
   agency.addTeam(InfluencerManagementTeam);
   agency.addTeam(AnalyticsTeam);
 
-  // Initialize the agency
-  await agency.init();
-
   return agency;
+};
+
+// Function to run a prompt with a specific team
+export const runTeamPrompt = async (team: any, prompt: string) => {
+  try {
+    // In a real implementation, this would use the actual Agency Swarm API
+    // For now, we'll return a mock response
+    return `Mock response from ${team.name}: ${prompt}`;
+  } catch (error) {
+    console.error('Error running team prompt:', error);
+    return 'An error occurred while processing your request.';
+  }
 };
 
 // Export teams for direct access

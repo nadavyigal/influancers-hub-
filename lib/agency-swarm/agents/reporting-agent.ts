@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Reporting Agent - responsible for creating comprehensive reports
 export const ReportingAgent = new Agent({

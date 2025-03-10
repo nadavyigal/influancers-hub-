@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Content Idea Agent - responsible for generating content ideas for influencers
 export const ContentIdeaAgent = new Agent({

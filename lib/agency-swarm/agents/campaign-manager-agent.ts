@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Campaign Manager Agent - responsible for planning and managing influencer campaigns
 export const CampaignManagerAgent = new Agent({

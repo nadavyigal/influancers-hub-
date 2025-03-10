@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Insights Agent - responsible for providing strategic insights and recommendations
 export const InsightsAgent = new Agent({

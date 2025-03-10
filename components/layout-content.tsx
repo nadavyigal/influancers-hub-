@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
-export function LayoutContent({
+function LayoutContent({
   children,
 }: {
   children: React.ReactNode
@@ -18,18 +18,59 @@ export function LayoutContent({
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
   
-  // Don't show sidebar on auth pages
+  // Don't show sidebar on auth pages or onboarding
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password'
+  const isOnboardingPage = pathname === '/onboarding'
+  const isDashboardPage = pathname?.startsWith('/dashboard')
+  // Allow direct access to tools page without authentication
+  const isToolsPage = pathname === '/tools'
   
   useEffect(() => {
-    if (!loading && !user && !isAuthPage) {
-      router.push("/login")
+    try {
+      setMounted(true)
+      
+      // Only redirect from non-auth pages, non-dashboard pages, and non-tools pages
+      if (!loading && !user && !isAuthPage && !isRedirecting && !isDashboardPage && !isToolsPage) {
+        setIsRedirecting(true)
+        router.push("/login")
+      }
+    } catch (err) {
+      console.error("Error in LayoutContent useEffect:", err)
+      setError(err instanceof Error ? err : new Error(String(err)))
     }
-  }, [user, loading, router, isAuthPage])
+  }, [user, loading, router, isAuthPage, isRedirecting, isDashboardPage, isToolsPage])
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
+  }
+
+  // Handle errors
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-background to-muted">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          <div className="text-red-500 text-4xl">⚠️</div>
+          <p className="text-lg font-medium text-red-500">Something went wrong</p>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+        </div>
+      </div>
+    )
+  }
+
+  // During server-side rendering or before mounting, return a simple loading state
+  if (!mounted) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-background to-muted">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-lg font-medium text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -43,11 +84,22 @@ export function LayoutContent({
     )
   }
 
-  if (!user && !isAuthPage) {
+  if (isRedirecting) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-background to-muted">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg font-medium text-muted-foreground">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user && !isAuthPage && !isDashboardPage && !isToolsPage) {
     return null
   }
 
-  if (isAuthPage) {
+  if (isAuthPage || isOnboardingPage) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted">
         <div className="container mx-auto p-4">
@@ -70,4 +122,7 @@ export function LayoutContent({
       </div>
     </div>
   )
-} 
+}
+
+// Default export for dynamic import
+export default LayoutContent; 

@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Outreach Agent - responsible for influencer outreach and relationship management
 export const OutreachAgent = new Agent({

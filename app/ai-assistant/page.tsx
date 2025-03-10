@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import AgencySwarmInterface from "@/components/agency-swarm-interface";
+import AgentsInterface from "@/components/agents-interface";
 
 export const metadata: Metadata = {
   title: "AI Assistant | Influencers Hub",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function AIAssistantPage() {
   return (
     <div className="container mx-auto py-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">AI Assistant</h1>
           <p className="text-gray-500">
@@ -17,22 +17,22 @@ export default function AIAssistantPage() {
           </p>
         </div>
         
-        <AgencySwarmInterface />
+        <AgentsInterface />
         
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">How to Use the AI Assistant</h2>
           <div className="space-y-4">
             <div>
-              <h3 className="font-medium">1. Initialize the Agency</h3>
+              <h3 className="font-medium">1. Initialize the Agents</h3>
               <p className="text-sm text-gray-600">
-                Enter your OpenAI API key to initialize the AI agency. Your API key is used locally and never stored on our servers.
+                Enter your OpenAI API key to initialize the AI agents. Your API key is used locally and never stored on our servers.
               </p>
             </div>
             
             <div>
-              <h3 className="font-medium">2. Select a Team</h3>
+              <h3 className="font-medium">2. Select an Agent</h3>
               <p className="text-sm text-gray-600">
-                Choose the team that best matches your needs:
+                Choose the agent that best matches your needs from one of our specialized teams:
               </p>
               <ul className="list-disc list-inside text-sm text-gray-600 ml-4 mt-2">
                 <li><strong>Content Creation Team:</strong> For content ideas, writing, and review</li>

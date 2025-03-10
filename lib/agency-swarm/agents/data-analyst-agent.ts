@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Data Analyst Agent - responsible for analyzing influencer and campaign data
 export const DataAnalystAgent = new Agent({

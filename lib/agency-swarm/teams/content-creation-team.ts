@@ -1,4 +1,4 @@
-import { Team } from 'agency-swarm';
+import { Team } from '../mock-agency-swarm';
 import { ContentIdeaAgent } from '../agents/content-idea-agent';
 import { ContentWriterAgent } from '../agents/content-writer-agent';
 import { ContentReviewerAgent } from '../agents/content-reviewer-agent';

@@ -1,4 +1,4 @@
-import { Team } from 'agency-swarm';
+import { Team } from '../mock-agency-swarm';
 import { InfluencerResearchAgent } from '../agents/influencer-research-agent';
 import { CampaignManagerAgent } from '../agents/campaign-manager-agent';
 import { OutreachAgent } from '../agents/outreach-agent';

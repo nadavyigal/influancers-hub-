@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Influencer Research Agent - responsible for researching and analyzing influencers
 export const InfluencerResearchAgent = new Agent({

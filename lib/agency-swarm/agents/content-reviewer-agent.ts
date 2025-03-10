@@ -1,4 +1,4 @@
-import { Agent } from 'agency-swarm';
+import { Agent } from '../mock-agency-swarm';
 
 // Content Reviewer Agent - responsible for reviewing and improving content
 export const ContentReviewerAgent = new Agent({
