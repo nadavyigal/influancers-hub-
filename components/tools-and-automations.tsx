@@ -4,24 +4,84 @@ import { useState, useEffect } from "react"
 import { ContentStrategistAgent } from "./content-strategist-agent"
 import { ContentSchedulerAgent } from "./content-scheduler-agent"
 import { EngagementManagerAgent } from "./engagement-manager-agent"
+import { AlertCircle, Loader2 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import dynamic from 'next/dynamic'
 
 // Dynamically import the ContentEditorAgent component with SSR disabled
 const ContentEditorAgent = dynamic(
   () => import('./content-editor-agent'),
-  { ssr: false }
+  { 
+    loading: () => (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading Content Editor...</span>
+      </div>
+    ),
+    ssr: false 
+  }
 )
 
 export function ToolsAndAutomations() {
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Only render the component after it has mounted on the client
   useEffect(() => {
-    setMounted(true);
+    try {
+      console.log("ToolsAndAutomations mounting...");
+      setMounted(true);
+      console.log("ToolsAndAutomations mounted successfully");
+    } catch (err) {
+      console.error("Error in ToolsAndAutomations mount:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    }
   }, []);
 
+  // Debug logging
+  useEffect(() => {
+    console.log("ToolsAndAutomations state:", {
+      mounted,
+      error,
+      retryCount
+    });
+  }, [mounted, error, retryCount]);
+
+  const handleRetry = () => {
+    console.log("Retrying ToolsAndAutomations load...");
+    setRetryCount(prev => prev + 1);
+    setError(null);
+    // Force remount of the component
+    setMounted(false);
+    setTimeout(() => setMounted(true), 100);
+  };
+
   if (!mounted) {
-    return <div className="container mx-auto py-10">Loading tools...</div>;
+    return (
+      <div className="container mx-auto py-10">
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading tools...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-10">
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Component Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={handleRetry} className="mt-4">
+          Retry Loading
+        </Button>
+      </div>
+    );
   }
 
   return (

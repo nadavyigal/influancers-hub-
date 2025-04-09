@@ -18,546 +18,612 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 const mockTrackMentions = async (brandName: string, platforms: string[]) => {
   await new Promise((resolve) => setTimeout(resolve, 1800)); // Simulate API delay
   
-  // Return mock mentions data
-  return [
+  // Generate mock mentions data
+  const mockMentions = [
     {
-      id: 1,
+      id: "1",
       platform: "Twitter",
-      username: "user123",
-      profileImage: "/placeholder.svg?height=40&width=40",
-      text: `I love using ${brandName}! Best product ever.`,
+      username: "customer_happy",
+      content: `I absolutely love ${brandName}'s new product line! The quality is amazing. #happycustomer`,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
       sentiment: "positive",
-      reach: 1200,
-      timestamp: new Date().toISOString()
+      engagement: 42,
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
     },
     {
-      id: 2,
+      id: "2",
       platform: "Instagram",
-      username: "influencer_official",
-      profileImage: "/placeholder.svg?height=40&width=40",
-      text: `Just tried ${brandName} for the first time. Not sure how I feel about it yet.`,
+      username: "product_reviewer",
+      content: `Just tried ${brandName} for the first time. It's decent but a bit overpriced compared to competitors.`,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
       sentiment: "neutral",
-      reach: 15000,
-      timestamp: new Date(Date.now() - 3600000).toISOString()
+      engagement: 18,
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Daisy"
     },
     {
-      id: 3,
+      id: "3",
       platform: "Facebook",
-      username: "customer_feedback",
-      profileImage: "/placeholder.svg?height=40&width=40",
-      text: `Had issues with my ${brandName} order. Customer service was not helpful.`,
+      username: "angry_customer",
+      content: `Terrible customer service from ${brandName}! I've been waiting for a response for 3 days now. Will not recommend.`,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
       sentiment: "negative",
-      reach: 350,
-      timestamp: new Date(Date.now() - 7200000).toISOString()
+      engagement: 31,
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Max"
+    },
+    {
+      id: "4",
+      platform: "Twitter",
+      username: "tech_enthusiast",
+      content: `${brandName}'s latest feature update is a game-changer! So intuitive and powerful.`,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
+      sentiment: "positive",
+      engagement: 76,
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie"
+    },
+    {
+      id: "5",
+      platform: "Instagram",
+      username: "casual_user",
+      content: `Been using ${brandName} for about a week now. It's alright, does what it says.`,
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      sentiment: "neutral",
+      engagement: 9,
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bella"
     }
   ];
+  
+  return mockMentions;
 };
 
 const mockGenerateResponses = async (mentions: any[]) => {
   await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API delay
   
-  // Generate mock responses for each mention
-  return mentions.map(mention => ({
-    ...mention,
-    response: mention.sentiment === "positive" 
-      ? `Thank you for your kind words about our product! We're thrilled you're enjoying it. Have you tried our new features yet?` 
-      : mention.sentiment === "neutral"
-      ? `Thanks for giving us a try! We'd love to hear more about your experience. Is there anything specific you'd like to know more about?`
-      : `We're sorry to hear about your experience. Please DM us with your order details, and we'll make it right for you immediately.`,
-    responseStatus: "pending" // pending, approved, sent
-  }));
+  // Generate mock responses based on sentiment
+  return mentions.map(mention => {
+    let response = "";
+    
+    if (mention.sentiment === "positive") {
+      response = `Thank you so much for your kind words, @${mention.username}! We're thrilled to hear you're enjoying our products. Your support means the world to us! 💯`;
+    } else if (mention.sentiment === "neutral") {
+      response = `We appreciate your feedback, @${mention.username}. We'd love to hear more about your experience and how we can make it even better. Feel free to DM us anytime!`;
+    } else {
+      response = `We're sorry to hear about your experience, @${mention.username}. This isn't the standard we aim for. Please DM us with more details so we can make things right.`;
+    }
+    
+    return {
+      ...mention,
+      response,
+      status: "pending" // pending, sent, failed
+    };
+  });
 };
 
-function EngagementManagerAgentBase() {
+interface EngagementManagerAgentProps {
+  apiKey?: string;
+}
+
+function EngagementManagerAgentBase({ apiKey }: EngagementManagerAgentProps) {
   const [brandName, setBrandName] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["Twitter", "Instagram"]);
   const [mentions, setMentions] = useState<any[]>([]);
   const [responses, setResponses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState("monitor");
+  const [responding, setResponding] = useState(false);
+  const [activeTab, setActiveTab] = useState("mentions");
+  const [autoRespond, setAutoRespond] = useState(false);
+  const [filterSentiment, setFilterSentiment] = useState<string | null>(null);
+  const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   
-  const handlePlatformToggle = useCallback((platform: string) => {
-    setPlatforms(prevPlatforms => {
-      if (prevPlatforms.includes(platform)) {
-        return prevPlatforms.filter(p => p !== platform);
-      } else {
-        return [...prevPlatforms, platform];
-      }
-    });
-  }, []);
-  
-  const handleTrackMentions = useCallback(async () => {
-    if (!brandName.trim()) return;
+  // Track mentions
+  const handleTrackMentions = async () => {
+    if (!brandName) return;
     
     setLoading(true);
     try {
-      const mentionsData = await mockTrackMentions(brandName, platforms);
-      setMentions(mentionsData);
-      setResponses([]);
+      const data = await mockTrackMentions(brandName, platforms);
+      setMentions(data);
     } catch (error) {
       console.error("Error tracking mentions:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [brandName, platforms]);
+  };
   
-  const handleGenerateResponses = useCallback(async () => {
+  // Generate responses
+  const handleGenerateResponses = async () => {
     if (mentions.length === 0) return;
     
-    setGenerating(true);
+    setResponding(true);
     try {
-      const generatedResponses = await mockGenerateResponses(mentions);
-      setResponses(generatedResponses);
+      const data = await mockGenerateResponses(mentions);
+      setResponses(data);
+      setActiveTab("responses");
     } catch (error) {
       console.error("Error generating responses:", error);
+    } finally {
+      setResponding(false);
     }
-    setGenerating(false);
-  }, [mentions]);
+  };
   
-  const handleApproveResponse = useCallback((id: number) => {
-    setResponses(prevResponses => 
-      prevResponses.map(response => 
-        response.id === id 
-          ? { ...response, responseStatus: "approved" } 
+  // Toggle platform selection
+  const togglePlatform = (platform: string) => {
+    setPlatforms(prev => 
+      prev.includes(platform)
+        ? prev.filter(p => p !== platform)
+        : [...prev, platform]
+    );
+  };
+  
+  // Send a response
+  const sendResponse = (id: string) => {
+    setResponses(prev => 
+      prev.map(response => 
+        response.id === id
+          ? { ...response, status: "sent" }
           : response
       )
     );
-  }, []);
+  };
   
-  const handleSendResponses = useCallback(() => {
-    setResponses(prevResponses => 
-      prevResponses.map(response => 
-        response.responseStatus === "approved" 
-          ? { ...response, responseStatus: "sent" } 
-          : response
-      )
-    );
-  }, []);
+  // Filter mentions/responses
+  const filteredItems = (items: any[]) => {
+    return items.filter(item => {
+      if (filterSentiment && item.sentiment !== filterSentiment) return false;
+      if (filterPlatform && item.platform !== filterPlatform) return false;
+      return true;
+    });
+  };
   
-  const handleEditResponse = useCallback((id: number, newResponse: string) => {
-    setResponses(prevResponses => 
-      prevResponses.map(response => 
-        response.id === id 
-          ? { ...response, response: newResponse } 
-          : response
-      )
-    );
-  }, []);
+  // Reset filters
+  const resetFilters = () => {
+    setFilterSentiment(null);
+    setFilterPlatform(null);
+  };
   
-  const approvedCount = responses.filter(r => r.responseStatus === "approved").length;
-  const sentCount = responses.filter(r => r.responseStatus === "sent").length;
+  // Get sentiment badge color
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case "positive": return "bg-green-500";
+      case "neutral": return "bg-blue-500";
+      case "negative": return "bg-red-500";
+      default: return "bg-gray-500";
+    }
+  };
   
+  // Format timestamp
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+      month: 'short',
+      day: 'numeric'
+    }).format(date);
+  };
+
   return (
-    <Card className="col-span-2 overflow-hidden border-0 shadow-md">
-      <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-500 dark:from-indigo-800 dark:to-purple-700 rounded-t-lg pb-8">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-6 w-6 text-white" />
-          <CardTitle className="text-white text-xl">Engagement Manager Agent</CardTitle>
-        </div>
-        <CardDescription className="text-indigo-50 mt-1">
-          AI-powered strategist specializing in boosting engagement and fostering audience interaction
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-blue-500" />
+          Engagement Manager
+        </CardTitle>
+        <CardDescription>
+          Monitor brand mentions across social platforms and respond to customer engagement
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-0 px-0">
-        <div className="bg-white dark:bg-gray-950 rounded-t-xl -mt-6 p-6 shadow-sm">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-2">
-            <TabsList className="grid w-full grid-cols-3 bg-indigo-50 dark:bg-indigo-950/30 p-1">
-              <TabsTrigger 
-                value="monitor" 
-                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-950 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400"
-              >
-                <Bell className="mr-2 h-4 w-4" />
-                Monitor Mentions
-              </TabsTrigger>
-              <TabsTrigger 
-                value="respond" 
-                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-950 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400"
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Respond
-              </TabsTrigger>
-              <TabsTrigger 
-                value="about" 
-                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-950 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400"
-              >
-                <Info className="mr-2 h-4 w-4" />
-                About
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="monitor" className="space-y-6 pt-6">
-              <div className="space-y-6">
-                {/* Brand and Platform Selection */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Monitor Brand Mentions</h3>
-                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
-                      Step 1
-                    </Badge>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <Label htmlFor="brand-name" className="text-sm font-medium">Brand Name</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="brand-name"
-                          placeholder="Enter your brand name..."
-                          value={brandName}
-                          onChange={(e) => setBrandName(e.target.value)}
-                          className="pl-10 border-indigo-200 focus:border-indigo-500 bg-indigo-50/30 focus:ring-indigo-500/20"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">Select Platforms</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {["Twitter", "Instagram", "Facebook", "LinkedIn", "TikTok", "YouTube"].map((platform) => (
-                          <div 
-                            key={platform} 
-                            className={cn(
-                              "flex items-center space-x-2 rounded-md border p-3 transition-colors",
-                              platforms.includes(platform) 
-                                ? "border-indigo-500 bg-indigo-50/50 dark:border-indigo-700 dark:bg-indigo-950/20" 
-                                : "border-gray-200 dark:border-gray-800"
-                            )}
-                          >
-                            <Switch 
-                              checked={platforms.includes(platform)}
-                              onCheckedChange={() => handlePlatformToggle(platform)}
-                              id={`platform-${platform}`}
-                              className="data-[state=checked]:bg-indigo-500"
-                            />
-                            <Label htmlFor={`platform-${platform}`} className="cursor-pointer">{platform}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Track Mentions Button */}
-                <div className="pt-2">
-                  <Button 
-                    onClick={handleTrackMentions} 
-                    disabled={loading || !brandName.trim()} 
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                    size="lg"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Tracking Mentions...
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="mr-2 h-5 w-5" />
-                        Track Brand Mentions
-                      </>
+      <CardContent className="space-y-4">
+        {/* Input Section */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <div className="sm:col-span-3">
+              <Label htmlFor="brand-name">Brand or Product Name</Label>
+              <Input
+                id="brand-name"
+                placeholder="Enter your brand name"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-1">
+              <Label className="mb-2 block">Platforms</Label>
+              <div className="flex flex-wrap gap-2">
+                {["Twitter", "Instagram", "Facebook"].map(platform => (
+                  <Badge
+                    key={platform}
+                    variant={platforms.includes(platform) ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer",
+                      platforms.includes(platform) && "bg-blue-500 hover:bg-blue-600"
                     )}
-                  </Button>
+                    onClick={() => togglePlatform(platform)}
+                  >
+                    {platform}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Button 
+              onClick={handleTrackMentions} 
+              disabled={!brandName || loading}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Tracking...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Track Mentions
+                </>
+              )}
+            </Button>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="auto-respond"
+                checked={autoRespond}
+                onCheckedChange={setAutoRespond}
+              />
+              <Label htmlFor="auto-respond">Auto-respond</Label>
+            </div>
+          </div>
+        </div>
+        
+        <Separator />
+        
+        {/* Tabs Section */}
+        {mentions.length > 0 && (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="flex items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="mentions" className="relative">
+                  Mentions
+                  {mentions.length > 0 && (
+                    <Badge className="ml-2 bg-blue-500">{mentions.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="responses" className="relative">
+                  Responses
+                  {responses.length > 0 && (
+                    <Badge className="ml-2 bg-green-500">{responses.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="analytics">
+                  Analytics
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Filter Controls */}
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  <Badge
+                    variant={filterSentiment === "positive" ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer",
+                      filterSentiment === "positive" && "bg-green-500"
+                    )}
+                    onClick={() => setFilterSentiment(prev => prev === "positive" ? null : "positive")}
+                  >
+                    Positive
+                  </Badge>
+                  <Badge
+                    variant={filterSentiment === "neutral" ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer",
+                      filterSentiment === "neutral" && "bg-blue-500"
+                    )}
+                    onClick={() => setFilterSentiment(prev => prev === "neutral" ? null : "neutral")}
+                  >
+                    Neutral
+                  </Badge>
+                  <Badge
+                    variant={filterSentiment === "negative" ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer",
+                      filterSentiment === "negative" && "bg-red-500"
+                    )}
+                    onClick={() => setFilterSentiment(prev => prev === "negative" ? null : "negative")}
+                  >
+                    Negative
+                  </Badge>
                 </div>
                 
-                {/* Mentions Display */}
-                {mentions.length > 0 && (
-                  <div className="mt-8 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Recent Mentions</h3>
-                      <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-none">
-                        {mentions.length} mentions found
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {mentions.map((mention) => (
-                        <div 
-                          key={mention.id} 
-                          className="border border-indigo-100 dark:border-indigo-900 rounded-md overflow-hidden bg-white dark:bg-gray-950 shadow-sm"
-                        >
-                          <div className="bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3 flex items-center justify-between">
+                {(filterSentiment || filterPlatform) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetFilters}
+                    className="h-8 px-2"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            <TabsContent value="mentions" className="space-y-4 mt-4">
+              {mentions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No mentions found. Try tracking mentions first.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredItems(mentions).map(mention => (
+                    <div 
+                      key={mention.id}
+                      className="rounded-lg border p-4 transition-all hover:bg-accent/50"
+                    >
+                      <div className="flex items-start gap-4">
+                        <Avatar>
+                          <AvatarImage src={mention.avatar} />
+                          <AvatarFallback>{mention.username.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              <span className="font-semibold">@{mention.username}</span>
                               <Badge 
+                                variant="secondary"
                                 className={cn(
-                                  "capitalize",
-                                  mention.platform === "Twitter" ? "bg-blue-500 hover:bg-blue-500" :
-                                  mention.platform === "Instagram" ? "bg-pink-500 hover:bg-pink-500" :
-                                  mention.platform === "Facebook" ? "bg-blue-700 hover:bg-blue-700" :
-                                  "bg-gray-500 hover:bg-gray-500"
+                                  "text-white",
+                                  mention.platform === "Twitter" ? "bg-blue-400" :
+                                  mention.platform === "Instagram" ? "bg-purple-500" :
+                                  mention.platform === "Facebook" ? "bg-blue-600" : "bg-gray-500"
                                 )}
                               >
                                 {mention.platform}
                               </Badge>
-                              <span className="text-sm font-medium text-indigo-800 dark:text-indigo-200">@{mention.username}</span>
+                              <Badge className={cn("text-white", getSentimentColor(mention.sentiment))}>
+                                {mention.sentiment}
+                              </Badge>
                             </div>
-                            <Badge 
-                              variant="outline" 
-                              className={cn(
-                                mention.sentiment === "positive" ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400" :
-                                mention.sentiment === "neutral" ? "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-950/20 dark:text-gray-400" :
-                                "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
-                              )}
-                            >
-                              {mention.sentiment}
-                            </Badge>
-                          </div>
-                          <div className="p-4">
-                            <div className="flex gap-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage src={mention.profileImage} alt={mention.username} />
-                                <AvatarFallback>{mention.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-sm">{mention.text}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  {new Date(mention.timestamp).toLocaleString()} • Reach: {mention.reach.toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="pt-2">
-                      <Button 
-                        onClick={() => setActiveTab("respond")} 
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                      >
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Generate Responses
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="respond" className="space-y-6 pt-6">
-              {mentions.length === 0 ? (
-                <div className="text-center py-12 px-4">
-                  <Bell className="h-16 w-16 mx-auto text-indigo-300" />
-                  <h3 className="mt-4 text-xl font-medium text-gray-900 dark:text-gray-100">No Mentions Found</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                    Track brand mentions first to generate personalized responses.
-                  </p>
-                  <Button 
-                    onClick={() => setActiveTab("monitor")} 
-                    className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white"
-                  >
-                    <Bell className="mr-2 h-4 w-4" />
-                    Track Mentions
-                  </Button>
-                </div>
-              ) : responses.length === 0 ? (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Generate Responses</h3>
-                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
-                      Step 2
-                    </Badge>
-                  </div>
-                  
-                  <div className="border border-indigo-100 dark:border-indigo-900 rounded-md p-4 bg-indigo-50/30 dark:bg-indigo-950/10">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      Generate personalized responses to {mentions.length} brand mentions across {platforms.length} platforms.
-                    </p>
-                    <Button 
-                      onClick={handleGenerateResponses} 
-                      disabled={generating} 
-                      className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
-                    >
-                      {generating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating Responses...
-                        </>
-                      ) : (
-                        <>
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          Generate AI Responses
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Review & Approve Responses</h3>
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
-                        {approvedCount}/{responses.length} Approved
-                      </Badge>
-                      <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 border-green-200 dark:border-green-800">
-                        {sentCount}/{responses.length} Sent
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {responses.map((response) => (
-                      <div 
-                        key={response.id} 
-                        className="border border-indigo-100 dark:border-indigo-900 rounded-md overflow-hidden bg-white dark:bg-gray-950 shadow-sm"
-                      >
-                        <div className="bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              className={cn(
-                                "capitalize",
-                                response.platform === "Twitter" ? "bg-blue-500 hover:bg-blue-500" :
-                                response.platform === "Instagram" ? "bg-pink-500 hover:bg-pink-500" :
-                                response.platform === "Facebook" ? "bg-blue-700 hover:bg-blue-700" :
-                                "bg-gray-500 hover:bg-gray-500"
-                              )}
-                            >
-                              {response.platform}
-                            </Badge>
-                            <span className="text-sm font-medium text-indigo-800 dark:text-indigo-200">@{response.username}</span>
-                          </div>
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              response.responseStatus === "pending" ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400" :
-                              response.responseStatus === "approved" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-400" :
-                              "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
-                            )}
-                          >
-                            {response.responseStatus === "pending" ? "Pending Approval" : 
-                             response.responseStatus === "approved" ? "Approved" : "Sent"}
-                          </Badge>
-                        </div>
-                        <div className="p-4">
-                          <div className="flex gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={response.profileImage} alt={response.username} />
-                              <AvatarFallback>{response.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm">{response.text}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {new Date(response.timestamp).toLocaleString()} • Reach: {response.reach.toLocaleString()}
-                              </p>
-                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(mention.timestamp)}
+                            </span>
                           </div>
                           
-                          <div className="mt-4 pl-12 border-l-2 border-indigo-200 dark:border-indigo-800">
-                            <h4 className="text-sm font-medium text-indigo-700 dark:text-indigo-300 mb-2">AI-Generated Response:</h4>
-                            <Textarea
-                              value={response.response}
-                              onChange={(e) => handleEditResponse(response.id, e.target.value)}
-                              className="min-h-[80px] border-indigo-200 focus:border-indigo-500 bg-indigo-50/30 focus:ring-indigo-500/20 resize-none text-sm"
-                              disabled={response.responseStatus === "sent"}
-                            />
+                          <p>{mention.content}</p>
+                          
+                          <div className="flex items-center justify-between pt-2">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                {mention.engagement}
+                              </span>
+                            </div>
                             
-                            {response.responseStatus === "pending" && (
-                              <div className="flex justify-end mt-2">
-                                <Button 
-                                  onClick={() => handleApproveResponse(response.id)} 
-                                  size="sm"
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                                >
-                                  <Check className="mr-2 h-3 w-3" />
-                                  Approve
-                                </Button>
-                              </div>
-                            )}
+                            <Button
+                              size="sm"
+                              onClick={handleGenerateResponses}
+                              disabled={responding}
+                              className="bg-blue-500 hover:bg-blue-600"
+                            >
+                              {responding ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                "Generate Response"
+                              )}
+                            </Button>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  
-                  {approvedCount > 0 && sentCount < responses.length && (
-                    <div className="pt-2">
-                      <Button 
-                        onClick={handleSendResponses} 
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-                      >
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Send {approvedCount} Approved Responses
-                      </Button>
                     </div>
-                  )}
-                  
-                  {sentCount === responses.length && (
-                    <div className="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900 rounded-md p-4 flex items-start gap-3">
-                      <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-green-800 dark:text-green-200">All Responses Sent</p>
-                        <p className="text-sm text-green-600 dark:text-green-300 mt-1">
-                          All approved responses have been successfully sent to their respective platforms.
-                        </p>
-                        <Button 
-                          onClick={() => setActiveTab("monitor")} 
-                          className="mt-3 bg-green-500 hover:bg-green-600 text-white"
-                          size="sm"
-                        >
-                          <Bell className="mr-2 h-4 w-4" />
-                          Monitor New Mentions
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
             </TabsContent>
             
-            <TabsContent value="about" className="pt-6">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">About Engagement Manager Agent</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                    A professional digital marketing strategist specializing in boosting engagement and fostering audience interaction. Ensures a high level of responsiveness and engagement across all social media platforms.
-                  </p>
+            <TabsContent value="responses" className="space-y-4 mt-4">
+              {responses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No responses generated yet. Generate responses first.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredItems(responses).map(response => (
+                    <div 
+                      key={response.id}
+                      className="rounded-lg border p-4 transition-all hover:bg-accent/50"
+                    >
+                      <div className="flex items-start gap-4">
+                        <Avatar>
+                          <AvatarImage src={response.avatar} />
+                          <AvatarFallback>{response.username.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">@{response.username}</span>
+                              <Badge 
+                                variant="secondary"
+                                className={cn(
+                                  "text-white",
+                                  response.platform === "Twitter" ? "bg-blue-400" :
+                                  response.platform === "Instagram" ? "bg-purple-500" :
+                                  response.platform === "Facebook" ? "bg-blue-600" : "bg-gray-500"
+                                )}
+                              >
+                                {response.platform}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(response.timestamp)}
+                            </span>
+                          </div>
+                          
+                          <div className="rounded-lg bg-muted p-3">
+                            <p className="text-sm">{response.content}</p>
+                          </div>
+                          
+                          <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 border border-blue-200 dark:border-blue-800">
+                            <p className="text-sm">{response.response}</p>
+                          </div>
+                          
+                          <div className="flex items-center justify-between pt-1">
+                            <div className="flex items-center gap-2">
+                              <Badge className={cn("text-white", getSentimentColor(response.sentiment))}>
+                                {response.sentiment}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {response.status === "sent" ? "Response sent" : "Ready to send"}
+                              </span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 w-8 p-0"
+                              >
+                                <Info className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                              
+                              <Button
+                                size="sm"
+                                onClick={() => sendResponse(response.id)}
+                                disabled={response.status === "sent"}
+                                className={cn(
+                                  "h-8",
+                                  response.status === "sent" ? "bg-green-500 hover:bg-green-500 cursor-default" : "bg-blue-500 hover:bg-blue-600"
+                                )}
+                              >
+                                {response.status === "sent" ? (
+                                  <>
+                                    <Check className="mr-2 h-3 w-3" />
+                                    Sent
+                                  </>
+                                ) : (
+                                  "Send Response"
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="analytics" className="mt-4">
+              <div className="rounded-lg border p-6">
+                <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                  <BarChart2 className="h-5 w-5 text-blue-500" />
+                  Engagement Analytics
+                </h3>
+                
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="rounded-lg border p-4 text-center">
+                    <div className="text-2xl font-bold text-blue-500">{mentions.length}</div>
+                    <div className="text-sm text-muted-foreground">Total Mentions</div>
+                  </div>
+                  
+                  <div className="rounded-lg border p-4 text-center">
+                    <div className="text-2xl font-bold text-green-500">
+                      {mentions.filter(m => m.sentiment === "positive").length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Positive Mentions</div>
+                  </div>
+                  
+                  <div className="rounded-lg border p-4 text-center">
+                    <div className="text-2xl font-bold text-red-500">
+                      {mentions.filter(m => m.sentiment === "negative").length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Negative Mentions</div>
+                  </div>
                 </div>
                 
-                <div className="bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900 rounded-md p-4">
-                  <h4 className="font-medium text-indigo-800 dark:text-indigo-200">Key Capabilities:</h4>
-                  <ul className="mt-3 space-y-3 text-sm">
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-indigo-500 mt-0.5" />
-                      <span>Monitors brand mentions, comments, and DMs across all social platforms</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-indigo-500 mt-0.5" />
-                      <span>Generates personalized and engaging responses to user interactions</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-indigo-500 mt-0.5" />
-                      <span>Maintains a fast response time to improve follower interaction and retention</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-indigo-500 mt-0.5" />
-                      <span>Analyzes engagement patterns to optimize response strategies</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-indigo-500 mt-0.5" />
-                      <span>Identifies and prioritizes high-value interactions from key audience segments</span>
-                    </li>
-                  </ul>
+                <div className="mt-6">
+                  <h4 className="text-sm font-medium mb-2">Sentiment Distribution</h4>
+                  <div className="h-4 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                    {mentions.length > 0 && (
+                      <>
+                        <div 
+                          className="h-full bg-green-500 float-left"
+                          style={{ 
+                            width: `${(mentions.filter(m => m.sentiment === "positive").length / mentions.length) * 100}%` 
+                          }}
+                        />
+                        <div 
+                          className="h-full bg-blue-500 float-left"
+                          style={{ 
+                            width: `${(mentions.filter(m => m.sentiment === "neutral").length / mentions.length) * 100}%` 
+                          }}
+                        />
+                        <div 
+                          className="h-full bg-red-500 float-left"
+                          style={{ 
+                            width: `${(mentions.filter(m => m.sentiment === "negative").length / mentions.length) * 100}%` 
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                  <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                    <span>Positive</span>
+                    <span>Neutral</span>
+                    <span>Negative</span>
+                  </div>
                 </div>
                 
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100">Integrated Tools:</h4>
-                  <div className="grid grid-cols-3 gap-3 mt-3">
-                    <div className="border border-indigo-100 dark:border-indigo-900 rounded-md p-3 text-center bg-white dark:bg-gray-950">
-                      <p className="text-indigo-700 dark:text-indigo-300 font-medium">ManyChat</p>
-                    </div>
-                    <div className="border border-indigo-100 dark:border-indigo-900 rounded-md p-3 text-center bg-white dark:bg-gray-950">
-                      <p className="text-indigo-700 dark:text-indigo-300 font-medium">ChatGPT Bot</p>
-                    </div>
-                    <div className="border border-indigo-100 dark:border-indigo-900 rounded-md p-3 text-center bg-white dark:bg-gray-950">
-                      <p className="text-indigo-700 dark:text-indigo-300 font-medium">Brand24</p>
-                    </div>
+                <div className="mt-6">
+                  <h4 className="text-sm font-medium mb-2">Platform Distribution</h4>
+                  <div className="space-y-2">
+                    {["Twitter", "Instagram", "Facebook"].map(platform => {
+                      const count = mentions.filter(m => m.platform === platform).length;
+                      const percentage = mentions.length > 0 ? (count / mentions.length) * 100 : 0;
+                      
+                      return (
+                        <div key={platform} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>{platform}</span>
+                            <span>{count} ({percentage.toFixed(1)}%)</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full",
+                                platform === "Twitter" ? "bg-blue-400" :
+                                platform === "Instagram" ? "bg-purple-500" :
+                                "bg-blue-600"
+                              )}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             </TabsContent>
           </Tabs>
-        </div>
+        )}
+        
+        {/* Empty State */}
+        {mentions.length === 0 && !loading && (
+          <div className="text-center py-8">
+            <Bell className="mx-auto h-12 w-12 text-muted-foreground opacity-50 mb-4" />
+            <h3 className="text-lg font-medium">No mentions tracked yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Enter your brand name and track mentions to see what people are saying
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

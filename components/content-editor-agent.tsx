@@ -9,10 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { VideoIcon, ImageIcon, PlayIcon, InfoIcon } from "lucide-react";
+import { VideoIcon, ImageIcon, Play, InfoIcon, Loader2 } from "lucide-react";
+
+export interface ContentEditorAgentProps {
+  apiKey?: string;
+}
 
 // Main component implementation
-export function ContentEditorAgent() {
+export function ContentEditorAgent({ apiKey }: ContentEditorAgentProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -113,7 +117,7 @@ export function ContentEditorAgent() {
                     >
                       {processing ? (
                         <span className="flex items-center gap-2">
-                          <PlayIcon className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                           Processing...
                         </span>
                       ) : (
@@ -164,7 +168,7 @@ export function ContentEditorAgent() {
                     >
                       {processing ? (
                         <span className="flex items-center gap-2">
-                          <PlayIcon className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                           Processing...
                         </span>
                       ) : (

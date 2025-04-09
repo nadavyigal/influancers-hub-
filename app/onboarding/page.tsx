@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,17 @@ const steps = [
   { id: "complete", title: "Complete" }
 ]
 
+// Predefined arrays for interests and content types to avoid recreating on each render
+const INTERESTS = [
+  "Fashion", "Beauty", "Fitness", "Travel", "Food", "Technology", 
+  "Gaming", "Lifestyle", "Business", "Education", "Health", "Wellness"
+]
+
+const CONTENT_TYPES = [
+  "Photos", "Videos", "Stories", "Reels", "Live Streams", 
+  "Blogs", "Podcasts", "Reviews", "Tutorials"
+]
+
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -50,38 +61,42 @@ export default function OnboardingPage() {
   const { user, userProfile, updateUserProfile: contextUpdateProfile } = useAuth()
   const { toast } = useToast()
   
+  // Memoize the checks to reduce recalculations
+  const shouldRedirectToLogin = useMemo(() => !user && !loading, [user, loading])
+  const hasCompletedOnboarding = useMemo(() => userProfile?.isOnboardingComplete, [userProfile])
+  
   useEffect(() => {
-    // If user is not logged in, redirect to login
-    if (!user && !loading) {
-      router.push("/login")
+    // Early return pattern to improve readability and possibly performance
+    if (shouldRedirectToLogin) {
+      void router.push("/login")
       return
     }
     
-    // If user has already completed onboarding, redirect to dashboard
-    if (userProfile?.isOnboardingComplete) {
-      router.push("/dashboard")
+    if (hasCompletedOnboarding) {
+      void router.push("/dashboard")
       return
     }
     
-    // Pre-fill form data if user profile exists
-    if (userProfile) {
+    // Pre-fill form data only if not already filled
+    if (userProfile && !formData.displayName && userProfile.displayName) {
       setFormData(prevData => ({
         ...prevData,
         displayName: userProfile.displayName || "",
         instagramHandle: userProfile.instagramHandle || ""
       }))
     }
-  }, [user, userProfile, router, loading])
+  }, [shouldRedirectToLogin, hasCompletedOnboarding, userProfile, router, formData.displayName])
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Memoized handlers to prevent recreation on each render
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prevData => ({
       ...prevData,
       [name]: value
     }))
-  }
+  }, [])
   
-  const handleInterestToggle = (interest: string) => {
+  const handleInterestToggle = useCallback((interest: string) => {
     setFormData(prevData => {
       const interests = [...prevData.interests]
       if (interests.includes(interest)) {
@@ -96,9 +111,9 @@ export default function OnboardingPage() {
         }
       }
     })
-  }
+  }, [])
   
-  const handleContentTypeToggle = (type: string) => {
+  const handleContentTypeToggle = useCallback((type: string) => {
     setFormData(prevData => {
       const contentTypes = [...prevData.contentTypes]
       if (contentTypes.includes(type)) {
@@ -113,73 +128,74 @@ export default function OnboardingPage() {
         }
       }
     })
-  }
+  }, [])
   
-  const nextStep = async () => {
+  const nextStep = useCallback(async () => {
+    setLoading(true)
+    try {
     // Validate current step
     if (currentStep === 0 && !formData.displayName) {
-      toast({
-        title: "Error",
-        description: "Please enter your display name",
-        variant: "destructive"
-      })
-      return
+        throw new Error("Please enter your display name")
     }
     
     // If this is the last step before completion, save all data
     if (currentStep === steps.length - 2) {
-      setLoading(true)
-      try {
-        if (user) {
-          await updateUserProfile(user.uid, {
-            ...formData,
-            isOnboardingComplete: true
-          })
-          
-          // Update context
-          if (contextUpdateProfile) {
-            await contextUpdateProfile({
-              ...formData,
-              isOnboardingComplete: true
-            })
-          }
-          
-          // Create demo notifications
-          await createDemoNotifications(user.uid)
-          
-          toast({
-            title: "Success",
-            description: "Your profile has been updated successfully."
-          })
+        if (!user) {
+          throw new Error("You must be logged in to complete registration")
         }
-      } catch (error: any) {
+
+        // Update both Firebase and context in parallel
+        await Promise.all([
+          updateUserProfile(user.uid, {
+            ...formData,
+            isOnboardingComplete: true,
+            lastLoginAt: Date.now()
+          }),
+          contextUpdateProfile({
+            ...formData,
+            isOnboardingComplete: true,
+            updatedAt: Date.now()
+          })
+        ])
+
+        // Only create demo notifications after both updates succeed
+        try {
+          await createDemoNotifications(user.uid)
+        } catch (notificationError) {
+          console.error("Failed to create demo notifications:", notificationError)
+          // Continue anyway since this is not critical
+        }
+          
         toast({
-          title: "Error",
-          description: `Failed to update profile: ${error.message}`,
-          variant: "destructive"
+          title: "Success",
+          description: "Your profile has been updated successfully."
         })
-        setLoading(false)
-        return
       }
+
+      // Move to next step
+      setCurrentStep(prev => Math.min(prev + 1, steps.length - 1))
+    } catch (error: any) {
+      console.error("Onboarding error:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update profile",
+        variant: "destructive"
+      })
+    } finally {
       setLoading(false)
     }
-    
-    // Move to next step
-    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1))
-  }
+  }, [currentStep, formData, user, contextUpdateProfile, toast])
   
-  const prevStep = () => {
+  const prevStep = useCallback(() => {
     setCurrentStep(prev => Math.max(prev - 1, 0))
-  }
+  }, [])
   
-  const finishOnboarding = () => {
-    router.push("/dashboard")
-  }
+  const finishOnboarding = useCallback(() => {
+    void router.push("/dashboard")
+  }, [router])
   
-  const renderStep = () => {
-    switch (currentStep) {
-      case 0: // Basic Profile
-        return (
+  // Memoize step renderers to prevent recreation on each render
+  const BasicProfileStep = useMemo(() => (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="displayName">Display Name</Label>
@@ -204,10 +220,9 @@ export default function OnboardingPage() {
               />
             </div>
           </div>
-        )
+  ), [formData.displayName, formData.bio, handleInputChange])
       
-      case 1: // Social Media
-        return (
+  const SocialMediaStep = useMemo(() => (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="flex items-center">
@@ -270,25 +285,14 @@ export default function OnboardingPage() {
               />
             </div>
           </div>
-        )
-      
-      case 2: // Interests
-        const interests = [
-          "Fashion", "Beauty", "Fitness", "Travel", "Food", "Technology", 
-          "Gaming", "Lifestyle", "Business", "Education", "Health", "Wellness"
-        ]
-        
-        const contentTypes = [
-          "Photos", "Videos", "Stories", "Reels", "Live Streams", 
-          "Blogs", "Podcasts", "Reviews", "Tutorials"
-        ]
-        
-        return (
+  ), [formData.instagramHandle, formData.youtubeHandle, formData.twitterHandle, formData.tiktokHandle, formData.linkedinHandle, handleInputChange])
+  
+  const InterestsStep = useMemo(() => (
           <div className="space-y-6">
             <div className="space-y-2">
               <Label>What topics are you interested in?</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {interests.map(interest => (
+          {INTERESTS.map(interest => (
                   <Button
                     key={interest}
                     type="button"
@@ -306,7 +310,7 @@ export default function OnboardingPage() {
             <div className="space-y-2">
               <Label>What type of content do you create?</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {contentTypes.map(type => (
+          {CONTENT_TYPES.map(type => (
                   <Button
                     key={type}
                     type="button"
@@ -321,10 +325,9 @@ export default function OnboardingPage() {
               </div>
             </div>
           </div>
-        )
+  ), [formData.interests, formData.contentTypes, handleInterestToggle, handleContentTypeToggle])
       
-      case 3: // Complete
-        return (
+  const CompleteStep = useMemo(() => (
           <div className="text-center space-y-4">
             <div className="flex justify-center">
               <CheckCircle2 className="h-16 w-16 text-green-500" />
@@ -334,12 +337,32 @@ export default function OnboardingPage() {
               Thank you for completing your profile. You're all set to start using Influencer's Hub!
             </p>
           </div>
-        )
-      
-      default:
-        return null
+  ), [])
+  
+  // Render the current step efficiently
+  const renderStep = useCallback(() => {
+    switch (currentStep) {
+      case 0: return BasicProfileStep
+      case 1: return SocialMediaStep
+      case 2: return InterestsStep
+      case 3: return CompleteStep
+      default: return null
     }
-  }
+  }, [currentStep, BasicProfileStep, SocialMediaStep, InterestsStep, CompleteStep])
+  
+  // Calculate button text based on current step
+  const nextButtonText = useMemo(() => {
+    if (currentStep === steps.length - 2) {
+      return loading ? "Saving..." : "Complete"
+    }
+    return "Next"
+  }, [currentStep, loading])
+  
+  // Calculate progress percentage
+  const progressValue = useMemo(() => 
+    (currentStep + 1) / steps.length * 100, 
+    [currentStep]
+  )
   
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen py-8">
@@ -347,7 +370,7 @@ export default function OnboardingPage() {
         <CardHeader>
           <CardTitle>Welcome to Influencer's Hub</CardTitle>
           <CardDescription>Let's set up your profile in a few simple steps</CardDescription>
-          <Progress value={(currentStep + 1) / steps.length * 100} className="mt-2" />
+          <Progress value={progressValue} className="mt-2" />
         </CardHeader>
         <CardContent>
           <div className="mb-6">
@@ -398,13 +421,9 @@ export default function OnboardingPage() {
           
           {currentStep < steps.length - 1 ? (
             <Button onClick={nextStep} disabled={loading}>
-              {currentStep === steps.length - 2 ? (
-                loading ? "Saving..." : "Complete"
-              ) : (
-                <>
-                  Next
+              {nextButtonText}
+              {currentStep < steps.length - 2 && (
                   <ChevronRight className="h-4 w-4 ml-2" />
-                </>
               )}
             </Button>
           ) : (

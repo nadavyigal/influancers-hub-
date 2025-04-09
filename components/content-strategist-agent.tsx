@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, memo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -74,7 +74,12 @@ const mockGenerateReels = async (imageUrl: string, caption: string, hashtags: st
   return reelDesigns
 }
 
-export function ContentStrategistAgent() {
+// Update the component interface to accept apiKey
+interface ContentStrategistAgentProps {
+  apiKey?: string;
+}
+
+function ContentStrategistAgentBase({ apiKey }: ContentStrategistAgentProps) {
   const [niche, setNiche] = useState("")
   const [tone, setTone] = useState("casual")
   const [topic, setTopic] = useState("")
@@ -476,4 +481,6 @@ export function ContentStrategistAgent() {
       </CardContent>
     </Card>
   )
-} 
+}
+
+export const ContentStrategistAgent = memo(ContentStrategistAgentBase); 

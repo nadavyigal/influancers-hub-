@@ -1,5 +1,5 @@
 import type React from "react"
-import { BarChart3, Home, Settings, Users, Wrench, Send, LogOut, HelpCircle, Instagram, PlusCircle, FileVideo, Layers, Bot } from "lucide-react"
+import { BarChart3, Home, Settings, Users, Wrench, Send, LogOut, HelpCircle, DollarSign, PlusCircle, FileVideo, Layers, Bot, Hammer } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
@@ -31,9 +31,9 @@ export function Sidebar({ open }: SidebarProps) {
           {open && <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-4 px-2">Main Menu</h2>}
           <nav className="space-y-1.5">
             <NavItem icon={Home} label="Dashboard" href="/dashboard" open={open} active={pathname === '/dashboard'} />
-            <NavItem icon={PlusCircle} label="Create Content" href="/create" open={open} active={pathname === '/create'} />
+            <NavItem icon={Hammer} label="Content Tools" href="/content-tools" open={open} active={pathname === '/content-tools'} />
             <NavItem icon={Layers} label="My Content" href="/dashboard/content" open={open} active={pathname === '/dashboard/content'} />
-            <NavItem icon={Instagram} label="Instagram Analytics" href="/instagram" open={open} active={pathname === '/instagram'} />
+            <NavItem icon={DollarSign} label="Monetization" href="/monetization" open={open} active={pathname === '/monetization'} />
             <NavItem icon={Bot} label="AI Assistant" href="/ai-assistant" open={open} active={pathname === '/ai-assistant'} />
           </nav>
         </div>
@@ -42,7 +42,6 @@ export function Sidebar({ open }: SidebarProps) {
           {open && <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-4 px-2">Analytics</h2>}
           <nav className="space-y-1.5">
             <NavItem icon={BarChart3} label="Reporting" href="/reporting" open={open} active={pathname === '/reporting'} />
-            <NavItem icon={Wrench} label="Tools" href="/tools" open={open} active={pathname === '/tools'} />
             <NavItem icon={Send} label="Sendbox" href="/sendbox" open={open} active={pathname === '/sendbox'} />
             <NavItem icon={Users} label="Audience" href="/audience" open={open} active={pathname === '/audience'} />
           </nav>

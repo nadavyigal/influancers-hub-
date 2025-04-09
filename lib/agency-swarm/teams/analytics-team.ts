@@ -1,11 +1,44 @@
-import { Team } from '../mock-agency-swarm';
-import { DataAnalystAgent } from '../agents/data-analyst-agent';
-import { ReportingAgent } from '../agents/reporting-agent';
-import { InsightsAgent } from '../agents/insights-agent';
+import { Team, Agent } from '../mock-agency-swarm';
 
-// Analytics Team - responsible for analyzing data, generating reports, and providing insights
-export const AnalyticsTeam = new Team({
-  name: "Analytics Team",
-  description: "A team that analyzes data, generates reports, and provides insights for influencer marketing campaigns.",
-  agents: [DataAnalystAgent, ReportingAgent, InsightsAgent]
-}); 
+// Create a mock AnalyticsTeam
+let AnalyticsTeam: Team;
+
+try {
+  console.log("Creating AnalyticsTeam...");
+  
+  // Create mock agents
+  const dataAnalystAgent = new Agent({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "",
+    name: "Data Analyst Agent",
+    description: "Analyzes campaign data to extract meaningful insights"
+  });
+  
+  const reportingAgent = new Agent({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "",
+    name: "Reporting Agent",
+    description: "Creates comprehensive reports on campaign performance"
+  });
+  
+  const insightsAgent = new Agent({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "",
+    name: "Insights Agent",
+    description: "Provides strategic insights and recommendations based on data analysis"
+  });
+  
+  // Create the team
+  AnalyticsTeam = new Team(
+    "Analytics Team",
+    [dataAnalystAgent, reportingAgent, insightsAgent]
+  );
+  
+  console.log("AnalyticsTeam created successfully");
+} catch (error) {
+  console.error("Error creating AnalyticsTeam:", error);
+  // Create a fallback team to prevent runtime errors
+  AnalyticsTeam = new Team(
+    "Analytics Team (Fallback)",
+    []
+  );
+}
+
+export { AnalyticsTeam }; 

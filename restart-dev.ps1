@@ -1,0 +1,1 @@
+Stop-Process -Name node -Force -ErrorAction SilentlyContinue; Remove-Item -Path ".next" -Recurse -Force -ErrorAction SilentlyContinue; Write-Host "Cleared .next directory, restarting dev server..."; npm run dev

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AgentsGrid } from './agents-grid';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,8 +14,12 @@ import { AnalyticsTeam } from '@/lib/agency-swarm/teams/analytics-team';
 import { Agency } from '@/lib/agency-swarm/mock-agency-swarm';
 import { ContentSchedulerAgent } from './content-scheduler-agent';
 
-export default function AgentsInterface() {
-  const [apiKey, setApiKey] = useState<string>('');
+export interface AgentsInterfaceProps {
+  initialApiKey?: string;
+}
+
+export default function AgentsInterface({ initialApiKey = '' }: AgentsInterfaceProps) {
+  const [apiKey, setApiKey] = useState<string>(initialApiKey);
   const [prompt, setPrompt] = useState<string>('');
   const [response, setResponse] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -24,18 +28,98 @@ export default function AgentsInterface() {
   const [error, setError] = useState<string>('');
   const [initialized, setInitialized] = useState<boolean>(false);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
+  const [componentError, setComponentError] = useState<string | null>(null);
+  const [initAttempted, setInitAttempted] = useState<boolean>(false);
 
-  // Load API key from environment variables on component mount
-  useEffect(() => {
-    const envApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
-    if (envApiKey) {
-      setApiKey(envApiKey);
-      // Optionally auto-initialize if API key is available
-      if (!initialized && !loading) {
-        initializeAgencyWithKey(envApiKey);
-      }
+  console.log("AgentsInterface rendering with initialApiKey:", initialApiKey ? "provided" : "not provided");
+
+  // Initialize the agency with the API key - memoized to prevent unnecessary re-renders
+  const initializeAgencyWithKey = useCallback(async (key: string) => {
+    console.log("Initializing agency with key:", key ? "provided" : "not provided");
+    if (!key) {
+      console.log("No API key provided, skipping initialization");
+      setError("Please enter your OpenAI API key");
+      return;
     }
-  }, [initialized, loading]);
+
+    setLoading(true);
+    try {
+      // Create a new agency with the OpenAI API key
+      console.log("Creating new agency instance");
+      const newAgency = new Agency({
+        apiKey: key,
+        // Add any other configuration options here
+      });
+
+      // Add teams to the agency
+      console.log("Adding teams to agency");
+      newAgency.addTeam(ContentCreationTeam);
+      newAgency.addTeam(InfluencerManagementTeam);
+      newAgency.addTeam(AnalyticsTeam);
+
+      setAgency(newAgency);
+      setInitialized(true);
+      setError("");
+      console.log("Agency initialized successfully");
+    } catch (error) {
+      console.error("Error initializing agency:", error);
+      setError("Failed to initialize the agency. Please check your API key.");
+      setComponentError(error instanceof Error ? error.message : "Unknown error occurred during agency initialization");
+    } finally {
+      setLoading(false);
+      setInitAttempted(true);
+    }
+  }, []);
+
+  // Load API key from environment variables or props on component mount
+  useEffect(() => {
+    try {
+      console.log("AgentsInterface mounting with initialApiKey:", initialApiKey ? "provided" : "not provided");
+      
+      // If we've already attempted initialization, don't try again
+      if (initAttempted) {
+        console.log("Initialization already attempted, skipping");
+        return;
+      }
+      
+      // If initialApiKey was provided via props, use it
+      if (initialApiKey) {
+        console.log("Setting API key from props");
+        setApiKey(initialApiKey);
+        // Auto-initialize if API key is available
+        console.log("Auto-initializing with provided API key");
+        initializeAgencyWithKey(initialApiKey);
+      } 
+      // Otherwise try to load from environment variables
+      else {
+        const envApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+        if (envApiKey) {
+          console.log("Setting API key from environment variables");
+          setApiKey(envApiKey);
+          // Auto-initialize if API key is available
+          console.log("Auto-initializing with environment API key");
+          initializeAgencyWithKey(envApiKey);
+        } else {
+          console.log("No API key available from props or environment");
+          // For development purposes, provide a mock key
+          if (process.env.NODE_ENV === 'development') {
+            console.log("Using mock API key for development");
+            const mockKey = 'sk-mock-key-for-development';
+            setApiKey(mockKey);
+            console.log("Auto-initializing with mock API key");
+            initializeAgencyWithKey(mockKey);
+          } else {
+            // Set initAttempted to true to prevent further attempts
+            setInitAttempted(true);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error in AgentsInterface useEffect:", err);
+      setComponentError(err instanceof Error ? err.message : "Unknown error occurred");
+      setInitAttempted(true);
+    }
+  }, [initialApiKey, initializeAgencyWithKey, initAttempted]);
 
   // Initialize the agency with the API key
   const initializeAgency = async () => {
@@ -45,32 +129,6 @@ export default function AgentsInterface() {
     }
 
     initializeAgencyWithKey(apiKey);
-  };
-
-  // Helper function to initialize with a specific key
-  const initializeAgencyWithKey = async (key: string) => {
-    setLoading(true);
-    try {
-      // Create a new agency with the OpenAI API key
-      const newAgency = new Agency({
-        apiKey: key,
-        // Add any other configuration options here
-      });
-
-      // Add teams to the agency
-      newAgency.addTeam(ContentCreationTeam);
-      newAgency.addTeam(InfluencerManagementTeam);
-      newAgency.addTeam(AnalyticsTeam);
-
-      setAgency(newAgency);
-      setInitialized(true);
-      setError("");
-    } catch (error) {
-      console.error("Error initializing agency:", error);
-      setError("Failed to initialize the agency. Please check your API key.");
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Function to run a prompt with a specific team
@@ -85,46 +143,62 @@ export default function AgentsInterface() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!prompt) {
-      setError("Please enter a prompt");
-      return;
-    }
-
-    if (!selectedTeam) {
-      setError("Please select a team");
-      return;
-    }
+  // Function to handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prompt.trim()) return;
 
     setLoading(true);
+    setResponse('');
+
     try {
-      // Get the selected team
-      let team;
+      let teamToUse;
       switch (selectedTeam) {
-        case "content":
-          team = ContentCreationTeam;
+        case 'content':
+          teamToUse = ContentCreationTeam;
           break;
-        case "influencer":
-          team = InfluencerManagementTeam;
+        case 'influencer':
+          teamToUse = InfluencerManagementTeam;
           break;
-        case "analytics":
-          team = AnalyticsTeam;
+        case 'analytics':
+          teamToUse = AnalyticsTeam;
           break;
         default:
-          throw new Error("Invalid team selected");
+          teamToUse = ContentCreationTeam;
       }
 
-      // Run the prompt with the selected team
-      const responseText = await runTeamPrompt(team, prompt);
-      setResponse(responseText);
-      setError("");
+      const result = await runTeamPrompt(teamToUse, prompt);
+      setResponse(result);
     } catch (error) {
-      console.error("Error running prompt:", error);
-      setError("Failed to process your request. Please try again.");
+      console.error('Error:', error);
+      setResponse('An error occurred while processing your request.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (componentError) {
+    return (
+      <div className="w-full space-y-6">
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Component Error</AlertTitle>
+          <AlertDescription>
+            {componentError}
+            <div className="mt-2">
+              <Button onClick={() => {
+                setComponentError(null);
+                setInitAttempted(false);
+                initializeAgency();
+              }} variant="outline" size="sm">
+                Retry Initialization
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const handleTabChange = (value: string) => {
     // Map the tab values to the team values

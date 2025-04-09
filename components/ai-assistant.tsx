@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, memo } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Sparkles } from "lucide-react"
@@ -8,15 +8,16 @@ import { Sparkles } from "lucide-react"
 interface AIAssistantProps {
   metrics: string[]
   data: any[]
+  apiKey?: string
 }
 
-export function AIAssistant({ metrics, data }: AIAssistantProps) {
+function AIAssistantBase({ metrics, data, apiKey }: AIAssistantProps) {
   const [insight, setInsight] = useState("")
   const [loading, setLoading] = useState(false)
 
   const generateInsight = async () => {
     setLoading(true)
-    // In a real application, this would be an API call to an AI service
+    // In a real application, this would be an API call to an AI service using the apiKey
     await new Promise((resolve) => setTimeout(resolve, 1500))
     const generatedInsight = `Based on your ${metrics.join(", ")} data, here are some insights:
 
@@ -45,4 +46,6 @@ export function AIAssistant({ metrics, data }: AIAssistantProps) {
     </div>
   )
 }
+
+export const AIAssistant = memo(AIAssistantBase);
 

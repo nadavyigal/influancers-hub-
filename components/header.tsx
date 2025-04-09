@@ -29,11 +29,11 @@ export function Header({ toggleSidebar }: HeaderProps) {
 
   const handleSignOut = async () => {
     await signOutUser()
-    router.push("/login")
+    void router.push("/login")
   }
 
   const navigateToProfile = () => {
-    router.push("/dashboard/settings")
+    void router.push("/dashboard/settings")
   }
 
   return (
@@ -83,7 +83,7 @@ export function Header({ toggleSidebar }: HeaderProps) {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+            <DropdownMenuItem onClick={() => void router.push("/dashboard/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>

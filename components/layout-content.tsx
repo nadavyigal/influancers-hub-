@@ -27,22 +27,24 @@ function LayoutContent({
   const isOnboardingPage = pathname === '/onboarding'
   const isDashboardPage = pathname?.startsWith('/dashboard')
   // Allow direct access to tools page without authentication
-  const isToolsPage = pathname === '/tools'
+  const isToolsPage = pathname === '/tools' || pathname === '/tool' || pathname?.startsWith('/tools/') || pathname === '/content-tools'
+  // Allow direct access to AI Assistant page without authentication
+  const isAIAssistantPage = pathname === '/ai-assistant' || pathname === '/ai-assistance' || pathname?.startsWith('/ai-assistant/') || pathname?.startsWith('/ai-assistance/')
   
   useEffect(() => {
     try {
       setMounted(true)
       
-      // Only redirect from non-auth pages, non-dashboard pages, and non-tools pages
-      if (!loading && !user && !isAuthPage && !isRedirecting && !isDashboardPage && !isToolsPage) {
+      // Only redirect from non-auth pages, non-dashboard pages, non-tools pages, and non-AI Assistant pages
+      if (!loading && !user && !isAuthPage && !isRedirecting && !isDashboardPage && !isToolsPage && !isAIAssistantPage) {
         setIsRedirecting(true)
-        router.push("/login")
+        void router.push("/login")
       }
     } catch (err) {
       console.error("Error in LayoutContent useEffect:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
     }
-  }, [user, loading, router, isAuthPage, isRedirecting, isDashboardPage, isToolsPage])
+  }, [user, loading, router, isAuthPage, isRedirecting, isDashboardPage, isToolsPage, isAIAssistantPage])
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
@@ -95,7 +97,7 @@ function LayoutContent({
     )
   }
 
-  if (!user && !isAuthPage && !isDashboardPage && !isToolsPage) {
+  if (!user && !isAuthPage && !isDashboardPage && !isToolsPage && !isAIAssistantPage) {
     return null
   }
 

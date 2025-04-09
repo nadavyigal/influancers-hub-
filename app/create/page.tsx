@@ -47,7 +47,7 @@ export default function CreateContentPage() {
           console.error("Error fetching user profile:", error)
         }
       } else {
-        router.push("/login")
+        void router.push("/login")
       }
       setLoading(false)
     })
@@ -154,7 +154,7 @@ export default function CreateContentPage() {
       })
       
       // Redirect to content detail page
-      router.push(`/content/${contentId}`)
+      void router.push(`/content/${contentId}`)
     } catch (error) {
       console.error("Error creating content:", error)
       toast({

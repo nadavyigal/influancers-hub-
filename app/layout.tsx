@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 import dynamic from 'next/dynamic'
 import { Loader2 } from "lucide-react"
+import { Metadata } from "next"
 
 // Simple loading component to show while the layout content is loading
 function LoadingFallback() {
@@ -33,10 +34,17 @@ const LayoutContent = dynamic(
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
-export const metadata = {
-  title: "Influencer's Hub",
-  description: "AI-powered tools for social media influencers",
-  generator: 'v0.dev'
+export const metadata: Metadata = {
+  title: {
+    default: "Influencers Hub",
+    template: "%s | Influencers Hub",
+  },
+  description: "All-in-one platform for influencer marketing management",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 }
 
 export default function RootLayout({

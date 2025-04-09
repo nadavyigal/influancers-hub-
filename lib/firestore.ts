@@ -117,7 +117,11 @@ export const deleteInsight = async (insightId: string) => {
 
 // Notifications Collection
 export const createNotification = async (notificationData: Omit<Notification, 'id' | 'createdAt'>) => {
-  if (!db) throw new Error("Firebase Firestore is not initialized");
+  if (!db) {
+    console.log("Firebase Firestore is not initialized, skipping notification creation")
+    // Return a resolved promise instead of throwing an error
+    return Promise.resolve()
+  }
   
   const notificationWithTimestamp = {
     ...notificationData,

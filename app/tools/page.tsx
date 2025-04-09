@@ -1,11 +1,11 @@
 "use client"
 
-import { ToolsAndAutomations } from "@/components/tools-and-automations"
-import { AgentDefinitionDisplay } from "@/components/agent-definition-display"
 import { useEffect, useState, useCallback } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { Loader2 } from "lucide-react"
+import { Loader2, AlertCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 import dynamic from 'next/dynamic'
 
 // Content Scheduler agent definition code
@@ -76,10 +76,37 @@ agency = Agency([
     [content_editor, content_scheduler]  # Edited content passes to Scheduling
 ])`
 
+// Dynamically import components with error handling
+const DynamicToolsAndAutomations = dynamic(
+  () => import('@/components/tools-and-automations').then(mod => mod.ToolsAndAutomations),
+  { 
+    loading: () => (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading Tools & Automations...</span>
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+const DynamicAgentDefinitionDisplay = dynamic(
+  () => import('@/components/agent-definition-display').then(mod => mod.AgentDefinitionDisplay),
+  { ssr: false }
+)
+
 // Dynamically import the AgencyFlowDiagram component with SSR disabled
 const DynamicAgencyFlowDiagram = dynamic(
   () => import('@/components/agency-flow-diagram'),
-  { ssr: false }
+  { 
+    loading: () => (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading Agency Flow Diagram...</span>
+      </div>
+    ),
+    ssr: false 
+  }
 )
 
 export default function ToolsPage() {
@@ -87,20 +114,58 @@ export default function ToolsPage() {
   const [activeTab, setActiveTab] = useState("tools")
   const [mounted, setMounted] = useState(false)
   const [authBypassed, setAuthBypassed] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   
   // Use useCallback to prevent the function from being recreated on each render
   const handleBypassAuth = useCallback(() => {
     if (!authBypassed) {
-      bypassAuth()
-      setAuthBypassed(true)
+      try {
+        console.log("Bypassing auth for tools page...");
+        bypassAuth()
+        setAuthBypassed(true)
+        console.log("Auth bypassed successfully");
+      } catch (err) {
+        console.error("Error bypassing auth:", err);
+        setError(err instanceof Error ? err.message : "Failed to bypass authentication");
+      }
     }
   }, [bypassAuth, authBypassed])
   
   // Automatically bypass authentication when the page loads, but only once
   useEffect(() => {
-    setMounted(true)
-    handleBypassAuth()
+    try {
+      console.log("Tools page mounting...");
+      setMounted(true)
+      handleBypassAuth()
+      console.log("Tools page mounted successfully");
+    } catch (err) {
+      console.error("Error in Tools page mount:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    }
   }, [handleBypassAuth])
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Tools page state:", {
+      loading,
+      mounted,
+      authBypassed,
+      error,
+      retryCount,
+      activeTab
+    });
+  }, [loading, mounted, authBypassed, error, retryCount, activeTab]);
+
+  const handleRetry = () => {
+    console.log("Retrying Tools page load...");
+    setRetryCount(prev => prev + 1);
+    setError(null);
+    // Force remount of the component
+    setMounted(false);
+    setAuthBypassed(false);
+    setTimeout(() => setMounted(true), 100);
+  };
   
   // Show loading indicator while authentication is being bypassed or component is not mounted
   if (loading || !mounted) {
@@ -112,6 +177,22 @@ export default function ToolsPage() {
         </div>
       </div>
     )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="container mx-auto py-8">
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={handleRetry} className="mt-4">
+          Retry Loading
+        </Button>
+      </div>
+    );
   }
   
   // Render the tools once authentication is bypassed and component is mounted
@@ -125,7 +206,7 @@ export default function ToolsPage() {
         </TabsList>
         
         <TabsContent value="tools">
-          <ToolsAndAutomations />
+          <DynamicToolsAndAutomations />
         </TabsContent>
         
         <TabsContent value="definitions">
@@ -136,25 +217,25 @@ export default function ToolsPage() {
             </p>
             
             <div className="grid gap-6">
-              <AgentDefinitionDisplay 
+              <DynamicAgentDefinitionDisplay 
                 title="Content Scheduler Agent"
                 description="Agent definition for scheduling and automating content distribution"
                 code={contentSchedulerCode}
               />
               
-              <AgentDefinitionDisplay 
+              <DynamicAgentDefinitionDisplay 
                 title="Engagement Manager Agent"
                 description="Agent definition for monitoring and responding to brand mentions"
                 code={engagementManagerCode}
               />
               
-              <AgentDefinitionDisplay 
+              <DynamicAgentDefinitionDisplay 
                 title="Content Editor Agent"
                 description="Agent definition for AI-driven video and image editing"
                 code={contentEditorCode}
               />
               
-              <AgentDefinitionDisplay 
+              <DynamicAgentDefinitionDisplay 
                 title="Agency Flow Definition"
                 description="Definition of how agents interact with each other in the workflow"
                 code={agencyFlowCode}

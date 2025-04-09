@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { AlertCircle } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -35,39 +36,104 @@ export default function LoginPage() {
   const [resetPasswordEmail, setResetPasswordEmail] = useState("")
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false)
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState(false)
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { bypassAuth } = useAuth()
 
   useEffect(() => {
     // Check if Firebase auth is initialized
-    if (auth) {
-      console.log("Firebase auth is available on login page");
-    } else {
-      console.error("Firebase auth is not available on login page");
-      setErrorMessage("Firebase authentication is not initialized properly");
-    }
-  }, []);
+    const checkFirebase = () => {
+      const authInstance = auth;
+      if (authInstance) {
+        console.log("Firebase auth is available on login page");
+        setFirebaseInitialized(true);
+        
+        // If user is already authenticated, redirect to dashboard
+        const currentUser = authInstance.currentUser;
+        if (currentUser) {
+          console.log("User is already authenticated, redirecting to dashboard");
+          void router.push("/dashboard");
+        }
+      } else {
+        console.warn("Firebase auth is not available yet on login page");
+        // Check for Firebase config
+        console.log("Checking Firebase config:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "API Key exists" : "API Key missing");
+        
+        // Retry after a short delay
+        setTimeout(checkFirebase, 1000);
+      }
+    };
+
+    checkFirebase();
+  }, [router]);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!firebaseInitialized) {
+      console.log("Firebase not initialized, checking auth object:", !!auth);
+      setErrorMessage("Authentication system is not ready yet. Please try again in a moment.");
+      toast({
+        title: "Error",
+        description: "Authentication system is not ready yet. Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true)
     setErrorMessage("")
     
     try {
       console.log("Attempting to sign in with email:", email);
-      await signInWithEmail(email, password, rememberMe)
-      console.log("Sign in successful");
+      const result = await signInWithEmail(email, password, rememberMe)
+      console.log("Sign in successful", result);
+      
+      if (!result) {
+        throw new Error("Sign in failed - no user data returned");
+      }
+      
       toast({
         title: "Success",
         description: "You have successfully signed in.",
       })
-      router.push("/dashboard")
+      void router.push("/dashboard")
     } catch (error: any) {
       console.error("Sign in error:", error);
-      setErrorMessage(`Sign in failed: ${error.message}`);
+      
+      // Extract the error message and code
+      let errorMsg = "An error occurred during sign in";
+      if (error.code) {
+        // Handle specific Firebase error codes
+        switch (error.code) {
+          case 'auth/invalid-email':
+            errorMsg = "Invalid email address format.";
+            break;
+          case 'auth/user-disabled':
+            errorMsg = "This account has been disabled.";
+            break;
+          case 'auth/user-not-found':
+            errorMsg = "No account found with this email.";
+            break;
+          case 'auth/wrong-password':
+            errorMsg = "Incorrect password.";
+            break;
+          case 'auth/too-many-requests':
+            errorMsg = "Too many failed attempts. Please try again later.";
+            break;
+          case 'auth/network-request-failed':
+            errorMsg = "Network error. Please check your internet connection.";
+            break;
+          default:
+            errorMsg = error.message ? error.message.replace(/^(Firebase:|Error:)\s*/i, "") : "Unknown error occurred";
+        }
+      }
+      
+      setErrorMessage(errorMsg);
       toast({
         title: "Error",
-        description: `Failed to sign in: ${error.message}`,
+        description: errorMsg,
         variant: "destructive",
       })
     } finally {
@@ -102,13 +168,21 @@ export default function LoginPage() {
         title: "Success",
         description: "Your account has been created successfully. Please verify your email.",
       })
-      router.push("/dashboard")
+      void router.push("/dashboard")
     } catch (error: any) {
       console.error("Sign up error:", error);
-      setErrorMessage(`Sign up failed: ${error.message}`);
+      
+      // Extract the error message
+      let errorMsg = "An error occurred during sign up";
+      if (error.message) {
+        // Get the specific error message, remove the "Firebase: " prefix if it exists
+        errorMsg = error.message.replace(/^(Firebase:|Error:)\s*/i, "");
+      }
+      
+      setErrorMessage(errorMsg);
       toast({
         title: "Error",
-        description: `Failed to sign up: ${error.message}`,
+        description: errorMsg,
         variant: "destructive",
       })
     } finally {
@@ -128,13 +202,25 @@ export default function LoginPage() {
         title: "Success",
         description: "You have successfully signed in with Google.",
       })
-      router.push("/dashboard")
+      void router.push("/dashboard")
     } catch (error: any) {
       console.error("Google sign in error:", error);
-      setErrorMessage(`Google sign in failed: ${error.message}`);
+      
+      // Handle Google sign-in errors differently as they might be user cancellation
+      let errorMsg = "An error occurred during Google sign in";
+      
+      // If the user canceled the login, show a different message
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        errorMsg = "Sign in was canceled. Please try again.";
+      } else if (error.message) {
+        // Get the specific error message, remove the "Firebase: " prefix if it exists
+        errorMsg = error.message.replace(/^(Firebase:|Error:)\s*/i, "");
+      }
+      
+      setErrorMessage(errorMsg);
       toast({
         title: "Error",
-        description: `Failed to sign in with Google: ${error.message}`,
+        description: errorMsg,
         variant: "destructive",
       })
     } finally {
@@ -154,13 +240,40 @@ export default function LoginPage() {
         description: "Password reset email sent. Please check your inbox.",
       });
     } catch (error: any) {
+      // Extract the error message
+      let errorMsg = "Failed to send reset email";
+      if (error.message) {
+        // Get the specific error message, remove the "Firebase: " prefix if it exists
+        errorMsg = error.message.replace(/^(Firebase:|Error:)\s*/i, "");
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to send reset email: ${error.message}`,
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestLogin = async () => {
+    try {
+      console.log("Using bypass auth for development testing");
+      const mockAuth = bypassAuth();
+      console.log("Mock auth created:", mockAuth);
+      toast({
+        title: "Test Login",
+        description: "Successfully logged in with test account.",
+      });
+      void router.push("/dashboard");
+    } catch (error) {
+      console.error("Test login error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to use test login.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -170,6 +283,22 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle>Welcome to Influencer's Hub</CardTitle>
           <CardDescription>Sign in or create an account to get started</CardDescription>
+          
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+              <Button 
+                variant="default" 
+                className="w-full mt-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                onClick={handleTestLogin}
+                disabled={loading}
+              >
+                Developer Quick Login
+              </Button>
+              <p className="text-xs text-center mt-1 text-yellow-700">
+                Development mode only - bypasses Firebase auth
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {errorMessage && (
@@ -311,7 +440,7 @@ export default function LoginPage() {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
             {loading ? "Processing..." : "Sign in with Google"}
           </Button>

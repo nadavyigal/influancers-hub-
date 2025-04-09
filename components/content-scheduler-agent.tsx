@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, memo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -19,7 +19,11 @@ const mockReels = [
   { id: 5, title: "Brand Partnership Announcement", agent: "Campaign Manager", duration: "0:30" },
 ];
 
-export function ContentSchedulerAgent() {
+interface ContentSchedulerAgentProps {
+  apiKey?: string;
+}
+
+function ContentSchedulerAgentBase({ apiKey }: ContentSchedulerAgentProps) {
   const [content, setContent] = useState("")
   const [isScheduling, setIsScheduling] = useState(false)
   const [selectedReels, setSelectedReels] = useState<number[]>([])
@@ -27,6 +31,8 @@ export function ContentSchedulerAgent() {
 
   const handleSchedule = async () => {
     setIsScheduling(true)
+    // Here you would use the apiKey for OpenAI API calls
+    console.log("Using API key:", apiKey)
     // Mock scheduling delay
     await new Promise(resolve => setTimeout(resolve, 2000))
     setIsScheduling(false)
@@ -231,4 +237,6 @@ export function ContentSchedulerAgent() {
       </CardContent>
     </Card>
   )
-} 
+}
+
+export const ContentSchedulerAgent = memo(ContentSchedulerAgentBase); 

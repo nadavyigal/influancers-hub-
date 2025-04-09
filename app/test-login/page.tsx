@@ -32,7 +32,7 @@ export default function TestLoginPage() {
     setTimeout(() => {
       console.log("Test login successful")
       setLoading(false)
-      router.push("/dashboard")
+      void router.push("/dashboard")
     }, 1000)
   }
 
@@ -44,7 +44,7 @@ export default function TestLoginPage() {
     
     setTimeout(() => {
       setLoading(false)
-      router.push("/dashboard")
+      void router.push("/dashboard")
     }, 500)
   }
 
@@ -103,7 +103,7 @@ export default function TestLoginPage() {
             <Button 
               variant="ghost" 
               className="w-full"
-              onClick={() => router.push("/")}
+              onClick={() => void router.push("/")}
             >
               Back to Home
             </Button>

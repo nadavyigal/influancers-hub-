@@ -21,14 +21,14 @@ export default function DashboardLayout({
       // If not authenticated, redirect to login
       if (!user) {
         setIsRedirecting(true)
-        router.push("/login")
+        void router.push("/login")
         return
       }
       
       // If onboarding is not complete, redirect to onboarding
       if (userProfile && !userProfile.isOnboardingComplete) {
         setIsRedirecting(true)
-        router.push("/onboarding")
+        void router.push("/onboarding")
         return
       }
     }
