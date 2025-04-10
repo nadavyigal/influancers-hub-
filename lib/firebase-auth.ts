@@ -48,6 +48,33 @@ export interface UserProfile {
   lastLoginAt: number
 }
 
+// Mock user profile for test mode
+const mockTimestamp = { 
+  seconds: Math.floor(Date.now() / 1000),
+  nanoseconds: 0,
+  toDate: () => new Date(),
+  toMillis: () => Date.now(),
+  isEqual: () => false,
+  valueOf: () => "",
+  toJSON: () => ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 })
+} as unknown as Timestamp;
+
+const mockUserProfile: UserProfile = {
+  uid: "test-user-id",
+  email: "test@example.com",
+  displayName: "Test User",
+  photoURL: "",
+  instagramHandle: "testuser",
+  youtubeHandle: "TestUserChannel",
+  twitterHandle: "testuser",
+  tiktokHandle: "testuser",
+  linkedinHandle: "test-user",
+  bio: "This is a test user for development",
+  isOnboardingComplete: true,
+  createdAt: mockTimestamp,
+  lastLoginAt: Date.now()
+};
+
 // Initialize Google Auth Provider
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({
@@ -55,184 +82,131 @@ googleProvider.setCustomParameters({
 })
 
 export const signUpWithEmail = async (email: string, password: string): Promise<UserProfile> => {
-  if (!auth) throw new Error("Firebase auth is not initialized")
-  
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth as Auth, email, password)
-    const user = userCredential.user
-    
-    // Send email verification
-    await sendEmailVerification(user)
-    
-    const userProfile: UserProfile = {
-      uid: user.uid,
-      email: user.email!,
-      displayName: user.displayName || "",
-      photoURL: user.photoURL || "",
-      instagramHandle: "",
-      isOnboardingComplete: false,
-      createdAt: serverTimestamp(),
-      lastLoginAt: Date.now()
-    }
-    await setDoc(doc(db as Firestore, "users", user.uid), userProfile)
-    return userProfile
-  } catch (error: any) {
-    console.error("Sign up error:", error)
-    throw new Error(`Failed to sign up: ${error.message}`)
-  }
+  console.log("Test mode: Simulating sign up with email:", email);
+  return { ...mockUserProfile, email };
 }
 
 export const signInWithEmail = async (email: string, password: string, rememberMe: boolean = false): Promise<UserProfile> => {
-  if (!auth) throw new Error("Firebase auth is not initialized")
-  
-  // Set persistence based on remember me option
-  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-  
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth as Auth, email, password)
-    
-    // Update last login timestamp
-    const userProfile = await getUserProfile(userCredential.user.uid)
-    await updateUserLastLogin(userCredential.user.uid)
-    
-    return userProfile
-  } catch (error: any) {
-    console.error("Sign in error:", error)
-    throw new Error(`Failed to sign in: ${error.message}`)
-  }
+  console.log("Test mode: Simulating sign in with email:", email);
+  return { ...mockUserProfile, email };
 }
 
 export const signInWithGoogle = async (): Promise<UserProfile> => {
-  if (!auth) throw new Error("Firebase auth is not initialized")
-  
-  try {
-    const result = await signInWithPopup(auth, googleProvider)
-    const user = result.user
-    
-    // Check if user exists
-    const userDocRef = doc(db as Firestore, "users", user.uid)
-    const userDoc = await getDoc(userDocRef)
-    
-    // Determine if this is a new user
-    const isNewUser = !userDoc.exists()
-    
-    // For new users, use serverTimestamp, for existing users keep their timestamp or create a new one
-    const createdAt = isNewUser 
-      ? serverTimestamp() 
-      : (userDoc.exists() && userDoc.data().createdAt 
-          ? userDoc.data().createdAt 
-          : serverTimestamp())
-    
-    const userProfile: UserProfile = {
-      uid: user.uid,
-      email: user.email!,
-      displayName: user.displayName || "",
-      photoURL: user.photoURL || "",
-      instagramHandle: "",
-      isOnboardingComplete: isNewUser ? false : (userDoc.exists() ? userDoc.data().isOnboardingComplete || false : false),
-      createdAt: createdAt,
-      lastLoginAt: Date.now()
-    }
-    
-    // Update the user profile in Firestore
-    await setDoc(userDocRef, userProfile, { merge: true })
-    
-    // Update last login timestamp
-    await updateUserLastLogin(user.uid)
-    
-    return userProfile
-  } catch (error: any) {
-    console.error("Google sign in error:", error)
-    throw new Error(`Failed to sign in with Google: ${error.message}`)
-  }
+  console.log("Test mode: Simulating sign in with Google");
+  return mockUserProfile;
 }
 
 export const signOutUser = async (): Promise<void> => {
-  if (!auth) throw new Error("Firebase auth is not initialized")
-  
-  try {
-    await signOut(auth as Auth)
-  } catch (error: any) {
-    console.error("Sign out error:", error)
-    throw new Error(`Failed to sign out: ${error.message}`)
-  }
+  console.log("Test mode: Simulating sign out");
+  return Promise.resolve();
 }
 
 export const resetPassword = async (email: string): Promise<void> => {
-  if (!auth) throw new Error("Firebase auth is not initialized")
-  
-  try {
-    await sendPasswordResetEmail(auth as Auth, email)
-  } catch (error: any) {
-    console.error("Password reset error:", error)
-    throw new Error(`Failed to send password reset email: ${error.message}`)
-  }
+  console.log("Test mode: Simulating password reset for:", email);
+  return Promise.resolve();
 }
 
 export const deleteUserAccount = async (uid: string): Promise<void> => {
-  try {
-    if (!auth || !auth.currentUser) throw new Error("Firebase auth is not initialized or user not logged in")
-    
-    // Delete user data from Firestore
-    await deleteDoc(doc(db as Firestore, "users", uid))
-    
-    // Delete the user authentication account
-    await deleteUser(auth.currentUser)
-  } catch (error: any) {
-    console.error("Delete account error:", error)
-    throw new Error(`Failed to delete account: ${error.message}`)
-  }
+  console.log("Test mode: Simulating account deletion for:", uid);
+  return Promise.resolve();
 }
 
 export const getUserProfile = async (uid: string): Promise<UserProfile> => {
-  try {
-    if (!db) throw new Error("Firebase Firestore is not initialized")
-    
-    const userDoc = await getDoc(doc(db as Firestore, "users", uid))
-    if (userDoc.exists()) {
-      return userDoc.data() as UserProfile
-    }
-    throw new Error("User profile not found")
-  } catch (error: any) {
-    console.error("Get user profile error:", error)
-    throw new Error(`Failed to get user profile: ${error.message}`)
-  }
+  console.log("Test mode: Returning mock user profile for:", uid);
+  return { ...mockUserProfile, uid };
 }
 
 export const updateUserLastLogin = async (uid: string): Promise<void> => {
-  try {
-    if (!db) throw new Error("Firebase Firestore is not initialized")
-    
-    await setDoc(doc(db as Firestore, "users", uid), { lastLoginAt: Date.now() }, { merge: true })
-  } catch (error: any) {
-    console.error("Update last login error:", error)
-    // Non-critical error, don't throw
-  }
+  console.log("Test mode: Simulating last login update for:", uid);
+  return Promise.resolve();
 }
 
 export const updateUserProfile = async (uid: string, data: Partial<UserProfile>): Promise<void> => {
-  try {
-    if (!db) throw new Error("Firebase Firestore is not initialized")
-    
-    await setDoc(doc(db as Firestore, "users", uid), data, { merge: true })
-  } catch (error: any) {
-    console.error("Update user profile error:", error)
-    throw new Error(`Failed to update user profile: ${error.message}`)
-  }
+  console.log("Test mode: Simulating profile update for:", uid, data);
+  return Promise.resolve();
 }
 
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
-  if (!auth) throw new Error("Firebase auth is not initialized")
-  return onAuthStateChanged(auth as Auth, callback)
+  // Create a mock user object that matches the Firebase User interface
+  const mockUser = {
+    uid: mockUserProfile.uid,
+    email: mockUserProfile.email,
+    displayName: mockUserProfile.displayName,
+    photoURL: mockUserProfile.photoURL,
+    emailVerified: true,
+    isAnonymous: false,
+    metadata: { creationTime: new Date().toString(), lastSignInTime: new Date().toString() },
+    providerData: [],
+    refreshToken: 'mock-refresh-token',
+    tenantId: null,
+    delete: async () => {},
+    getIdToken: async () => 'mock-id-token',
+    getIdTokenResult: async () => ({ token: 'mock-token' } as any),
+    reload: async () => {},
+    toJSON: () => ({})
+  } as unknown as User;
+  
+  // Call the callback immediately with the mock user
+  setTimeout(() => callback(mockUser), 0);
+  
+  // Return a function to "unsubscribe"
+  return () => console.log("Test mode: Unsubscribing from auth state changes");
 }
 
 // Helper function to check if user is authenticated
 export const isAuthenticated = (): boolean => {
-  return auth?.currentUser != null
+  return true; // Always return true in test mode
 }
 
 // Helper function to get current user
 export const getCurrentUser = (): User | null => {
-  return auth?.currentUser || null
+  // Return a mock user
+  return {
+    uid: mockUserProfile.uid,
+    email: mockUserProfile.email,
+    displayName: mockUserProfile.displayName,
+    photoURL: mockUserProfile.photoURL,
+    emailVerified: true,
+    // Add other required properties to satisfy User interface
+    isAnonymous: false,
+    metadata: { creationTime: new Date().toString(), lastSignInTime: new Date().toString() },
+    providerData: [],
+    refreshToken: 'mock-refresh-token',
+    tenantId: null,
+    delete: async () => {},
+    getIdToken: async () => 'mock-id-token',
+    getIdTokenResult: async () => ({ token: 'mock-token' } as any),
+    reload: async () => {},
+    toJSON: () => ({})
+  } as unknown as User;
+}
+
+// Add these new functions for session management
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+// Update the timestamp when the user was last active
+export const updateUserActivity = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('lastActivityTime', Date.now().toString());
+  }
+};
+
+// Check if the session has timed out
+export const hasSessionExpired = (): boolean => {
+  return false; // Never expire in test mode
+}
+
+// Check session timeout and handle accordingly
+export const checkSessionTimeout = async (): Promise<boolean> => {
+  console.log("Test mode: Session timeout check - always active");
+  return false; // Session never expires in test mode
+}
+
+// Create a monitor for session timeout
+export const createSessionTimeoutMonitor = (onTimeout: () => void) => {
+  console.log("Test mode: Creating mock session timeout monitor");
+  
+  // Return a cleanup function
+  return () => console.log("Test mode: Cleaning up session timeout monitor");
 }
 

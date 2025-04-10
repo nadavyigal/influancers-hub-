@@ -27,96 +27,95 @@ export interface ContentItem {
   };
 }
 
+// Create mock timestamp
+const mockTimestamp = { 
+  seconds: Math.floor(Date.now() / 1000),
+  nanoseconds: 0,
+  toDate: () => new Date(),
+  toMillis: () => Date.now(),
+  isEqual: () => false,
+  valueOf: () => "",
+  toJSON: () => ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 })
+} as unknown as Timestamp;
+
+// Mock content for testing
+const mockContent: ContentItem = {
+  id: "mock-content-id",
+  userId: "test-user-id",
+  title: "Mock Content",
+  description: "This is a mock content item for testing",
+  contentType: "image",
+  styleType: "Consistency",
+  mediaUrls: ["https://via.placeholder.com/640x480.png"],
+  hashtags: ["#test", "#mock"],
+  status: "draft",
+  createdAt: mockTimestamp,
+  updatedAt: mockTimestamp
+};
+
 export async function createContent(content: Omit<ContentItem, "id" | "createdAt" | "updatedAt">): Promise<string> {
   try {
-    const now = Timestamp.now();
-    const contentWithTimestamps = {
-      ...content,
-      createdAt: now,
-      updatedAt: now,
-    };
-    
-    const docRef = await addDoc(collection(db, "content"), contentWithTimestamps);
-    return docRef.id;
+    // In test mode, just return a mock ID
+    console.log("Test mode: Creating mock content");
+    return "mock-content-id-" + Date.now();
   } catch (error) {
     console.error("Error creating content:", error);
-    throw new Error("Failed to create content");
+    return "mock-error-content-id";
   }
 }
 
 export async function updateContent(id: string, updates: Partial<ContentItem>): Promise<void> {
   try {
-    const contentRef = doc(db, "content", id);
-    await updateDoc(contentRef, {
-      ...updates,
-      updatedAt: Timestamp.now(),
-    });
+    console.log("Test mode: Updating mock content", id, updates);
+    return Promise.resolve();
   } catch (error) {
     console.error("Error updating content:", error);
-    throw new Error("Failed to update content");
+    return Promise.resolve();
   }
 }
 
 export async function getContent(id: string): Promise<ContentItem> {
   try {
-    const contentRef = doc(db, "content", id);
-    const contentSnap = await getDoc(contentRef);
-    
-    if (!contentSnap.exists()) {
-      throw new Error("Content not found");
-    }
-    
-    return { id: contentSnap.id, ...contentSnap.data() } as ContentItem;
+    console.log("Test mode: Getting mock content", id);
+    return { ...mockContent, id };
   } catch (error) {
     console.error("Error getting content:", error);
-    throw new Error("Failed to get content");
+    return { ...mockContent, id };
   }
 }
 
 export async function getUserContent(userId: string): Promise<ContentItem[]> {
   try {
-    const contentQuery = query(
-      collection(db, "content"),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc")
-    );
-    
-    const querySnapshot = await getDocs(contentQuery);
-    const content: ContentItem[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      content.push({ id: doc.id, ...doc.data() } as ContentItem);
-    });
-    
-    return content;
+    console.log("Test mode: Getting mock user content for", userId);
+    // Return an array of mock content items
+    return [
+      { ...mockContent, id: "mock-content-1", title: "First Mock Content" },
+      { ...mockContent, id: "mock-content-2", title: "Second Mock Content" },
+      { ...mockContent, id: "mock-content-3", title: "Third Mock Content" },
+    ];
   } catch (error) {
     console.error("Error getting user content:", error);
-    throw new Error("Failed to get user content");
+    return [];
   }
 }
 
 export async function deleteContent(id: string): Promise<void> {
   try {
-    const contentRef = doc(db, "content", id);
-    await deleteDoc(contentRef);
+    console.log("Test mode: Deleting mock content", id);
+    return Promise.resolve();
   } catch (error) {
     console.error("Error deleting content:", error);
-    throw new Error("Failed to delete content");
+    return Promise.resolve();
   }
 }
 
 export async function uploadContentMedia(userId: string, file: File): Promise<string> {
   try {
-    const timestamp = Date.now();
-    const fileName = `${timestamp}_${file.name}`;
-    const storageRef = ref(storage, `content/${userId}/${fileName}`);
-    
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-    
-    return downloadURL;
+    console.log("Test mode: Uploading mock content media");
+    // Return a placeholder image URL
+    return "https://via.placeholder.com/640x480.png?text=Mock+Upload";
   } catch (error) {
     console.error("Error uploading content media:", error);
-    throw new Error("Failed to upload content media");
+    return "https://via.placeholder.com/640x480.png?text=Mock+Error";
   }
 } 

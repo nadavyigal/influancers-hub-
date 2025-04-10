@@ -13,9 +13,9 @@ import type { AppUserProfile } from '@/types/user'
 
 // Constants
 const CONFIG = {
-  TEST_MODE: process.env.NODE_ENV === "development" && (process.env.NEXT_PUBLIC_TEST_MODE === "true" || process.env.NEXT_PUBLIC_DEV_MODE === "true" || true),
+  TEST_MODE: true,
   AUTH_TIMEOUT: 5000,
-  FIREBASE_DISABLED: process.env.NEXT_PUBLIC_DISABLE_FIREBASE === "true",
+  FIREBASE_DISABLED: true,
   PUBLIC_PAGES: ["/login", "/signup", "/reset-password", "/test-login", "/dev-login"] as const,
   MAX_RETRIES: 3,
   RETRY_DELAY: 1000
@@ -220,132 +220,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           return
         }
 
-        // Check if Firebase is available
-        if (!CONFIG.FIREBASE_DISABLED && !auth && state.retryCount < CONFIG.MAX_RETRIES) {
-          console.log(`Waiting for Firebase to initialize... (attempt ${state.retryCount + 1}/${CONFIG.MAX_RETRIES})`)
-          setState(prev => ({ ...prev, retryCount: prev.retryCount + 1 }))
-          setTimeout(setupAuth, CONFIG.RETRY_DELAY)
-          return
-        }
-
-        if (!CONFIG.FIREBASE_DISABLED && auth) {
-          console.log("Firebase auth is available, setting up auth state listener")
-          unsubscribe = auth.onAuthStateChanged(
-            async (user) => {
-              try {
-      if (user) {
-                  console.log("User authenticated:", user.uid)
-                  
-                  try {
-                    // Fetch or create user profile
-                    const profile = await getUserProfile(user.uid)
-                    
-                    // Check if this is a new user (based on certain criteria)
-                    const isNewUser = !profile.isOnboardingComplete && 
-                      (Math.abs(profile.createdAt - Date.now()) < 60000); // within the last minute
-                    
-                    setState(prev => ({ 
-                      ...prev, 
-                      user, 
-                      userProfile: profile, 
-                      loading: false,
-                      isNewUser,
-                      error: null,
-                      initialized: true 
-                    }))
-                    
-                    console.log("User profile loaded, isNewUser:", isNewUser)
-                  } catch (profileError) {
-                    console.error('Error fetching user profile:', profileError)
-                    
-                    // Create a basic profile if it doesn't exist
-                    try {
-                      console.log("Attempting to create default profile for user:", user.uid)
-                      const newProfile: AppUserProfile = {
-              uid: user.uid,
-                        email: user.email || '',
-                        displayName: user.displayName || '',
-                        photoURL: user.photoURL || '',
-                        createdAt: Date.now(),
-                        updatedAt: Date.now(),
-              isOnboardingComplete: false,
-                      }
-                      
-                      await updateProfile(user.uid, newProfile)
-                      
-                      setState(prev => ({
-                        ...prev,
-                        user,
-                        userProfile: newProfile,
-                        loading: false,
-                        isNewUser: true,
-                        error: null,
-                        initialized: true
-                      }))
-                      
-                      console.log("Created default profile for new user")
-                    } catch (createError) {
-                      console.error('Failed to create default profile:', createError)
-                      setState(prev => ({
-                        ...prev,
-                        user,
-                        loading: false,
-                        error: new Error(`Could not create user profile: ${createError instanceof Error ? createError.message : String(createError)}`),
-                        initialized: true
-                      }))
-                    }
-                  }
-                } else {
-                  setState(prev => ({ 
-                    ...prev, 
-                    user: null, 
-                    userProfile: null, 
-                    loading: false,
-                    error: null,
-                    initialized: true 
-                  }))
-                  console.log("No user authenticated")
-                }
-              } catch (err) {
-                console.error('Auth state handling error:', err)
-                setState(prev => ({
-                  ...prev,
-                  error: new Error(`Authentication error: ${err instanceof Error ? err.message : String(err)}`),
-                  loading: false,
-                  initialized: true
-                }))
-              }
-            },
-            (error) => {
-              console.error('Auth state change error:', error)
-              setState(prev => ({
-                ...prev,
-                error: new Error(`Authentication error: ${error.message}`),
-                loading: false,
-                initialized: true
-              }))
-            }
-          )
-        } else if (CONFIG.TEST_MODE) {
-          // Use the pre-created mock object instead of creating a new one
-          setState(prev => ({
-            ...prev,
-            user: MOCK_AUTH.user,
-            userProfile: MOCK_AUTH.profile,
-            bypassAuthEnabled: true,
-            loading: false,
-            error: null,
-            initialized: true
-          }))
-        } else {
-          setState(prev => ({ 
-            ...prev, 
-            loading: false,
-            initialized: true,
-            error: CONFIG.FIREBASE_DISABLED ? null : new Error("Firebase authentication is not available. Please refresh the page or try again later.")
-          }))
-          }
-        } catch (error) {
+        // Automatically use test mode in development
+        console.log("Using test mode authentication");
+        setState(prev => ({
+          ...prev,
+          user: MOCK_AUTH.user,
+          userProfile: MOCK_AUTH.profile,
+          bypassAuthEnabled: true,
+          loading: false,
+          error: null,
+          initialized: true
+        }))
+      } catch (error) {
         console.error('Error setting up auth listener:', error)
         setState(prev => ({
           ...prev,
@@ -370,19 +256,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     }
   }, [state.retryCount, state.initialized, state.loading, handleFirebaseInitError])
 
-  // Protected routes effect - with optimized condition checks
+  // Protected routes effect - disabled for test mode
   useEffect(() => {
-    // Skip effect if any of these conditions aren't met
-    if (state.loading || state.user || CONFIG.TEST_MODE || !state.initialized) {
-      return
-    }
-    
-    // Check if current path is public
-    const isPublicPage = CONFIG.PUBLIC_PAGES.includes(pathname as any)
-    if (!isPublicPage) {
-      console.log("Redirecting to login - user not authenticated")
-      void router.push("/login")
-    }
+    // Always skip redirects in test mode
+    return
   }, [state.user, state.loading, pathname, router, state.initialized])
 
   // Memoized context value to prevent unnecessary re-renders

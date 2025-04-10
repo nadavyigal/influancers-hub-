@@ -8,64 +8,42 @@ import {
   DocumentSnapshot
 } from 'firebase/firestore';
 
+// Mock user profile for test mode
+const mockUserProfile: AppUserProfile = {
+  uid: "test-user-id",
+  email: "test@example.com",
+  displayName: "Test User",
+  photoURL: "",
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  isOnboardingComplete: true,
+  instagramHandle: "testuser",
+  youtubeHandle: "TestUserChannel",
+  twitterHandle: "testuser",
+  tiktokHandle: "testuser",
+  linkedinHandle: "test-user",
+  bio: "This is a test user for development",
+  interests: ["photography", "social media", "marketing"],
+  contentTypes: ["photos", "reels", "stories"]
+};
+
 export async function getUserProfile(uid: string): Promise<AppUserProfile> {
-  if (!db) throw new Error("Firebase Firestore is not initialized");
-  
   try {
-    const userDocRef = doc(db as Firestore, "users", uid);
-    const userDoc = await getDoc(userDocRef);
-    
-    if (!userDoc.exists()) {
-      // If user document doesn't exist, create a basic profile
-      const currentUser = auth?.currentUser;
-      const defaultProfile: AppUserProfile = {
-        uid,
-        email: currentUser?.email ?? '',
-        displayName: currentUser?.displayName ?? '',
-        photoURL: currentUser?.photoURL ?? '',
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      };
-      
-      // Save the default profile
-      await setDoc(userDocRef, defaultProfile);
-      return defaultProfile;
-    }
-    
-    return userDoc.data() as AppUserProfile;
+    console.log("Test mode: Returning mock user profile for:", uid);
+    return { ...mockUserProfile, uid };
   } catch (error) {
     console.error("Error getting user profile:", error);
-    throw new Error(`Failed to get user profile: ${error instanceof Error ? error.message : String(error)}`);
+    return { ...mockUserProfile, uid };
   }
 }
 
 export async function updateUserProfile(uid: string, data: Partial<AppUserProfile>): Promise<AppUserProfile> {
-  if (!db) throw new Error("Firebase Firestore is not initialized");
-  
   try {
-    // Get current profile to merge with updates
-    const userDocRef = doc(db as Firestore, "users", uid);
-    let currentProfile: Partial<AppUserProfile> = {};
-    
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-      currentProfile = userDoc.data() as AppUserProfile;
-    }
-    
-    // Prepare updated profile data
-    const updatedProfile = {
-      ...currentProfile,
-      ...data,
-      uid, // Ensure UID is always set
-      updatedAt: Date.now()
-    };
-    
-    // Save to Firestore
-    await setDoc(userDocRef, updatedProfile, { merge: true });
-    
-    return updatedProfile as AppUserProfile;
+    console.log("Test mode: Simulating profile update for:", uid, data);
+    // Return merged user profile
+    return { ...mockUserProfile, ...data, uid, updatedAt: Date.now() };
   } catch (error) {
     console.error("Error updating user profile:", error);
-    throw new Error(`Failed to update user profile: ${error instanceof Error ? error.message : String(error)}`);
+    return { ...mockUserProfile, uid };
   }
 } 

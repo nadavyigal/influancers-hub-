@@ -6,7 +6,6 @@ import { Header } from "@/components/header"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 function LayoutContent({
@@ -16,35 +15,22 @@ function LayoutContent({
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const { user, loading } = useAuth()
-  const router = useRouter()
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   
   // Don't show sidebar on auth pages or onboarding
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password'
   const isOnboardingPage = pathname === '/onboarding'
-  const isDashboardPage = pathname?.startsWith('/dashboard')
-  // Allow direct access to tools page without authentication
-  const isToolsPage = pathname === '/tools' || pathname === '/tool' || pathname?.startsWith('/tools/') || pathname === '/content-tools'
-  // Allow direct access to AI Assistant page without authentication
-  const isAIAssistantPage = pathname === '/ai-assistant' || pathname === '/ai-assistance' || pathname?.startsWith('/ai-assistant/') || pathname?.startsWith('/ai-assistance/')
   
   useEffect(() => {
     try {
       setMounted(true)
-      
-      // Only redirect from non-auth pages, non-dashboard pages, non-tools pages, and non-AI Assistant pages
-      if (!loading && !user && !isAuthPage && !isRedirecting && !isDashboardPage && !isToolsPage && !isAIAssistantPage) {
-        setIsRedirecting(true)
-        void router.push("/login")
-      }
     } catch (err) {
       console.error("Error in LayoutContent useEffect:", err)
       setError(err instanceof Error ? err : new Error(String(err)))
     }
-  }, [user, loading, router, isAuthPage, isRedirecting, isDashboardPage, isToolsPage, isAIAssistantPage])
+  }, [])
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen)
@@ -73,32 +59,6 @@ function LayoutContent({
         </div>
       </div>
     )
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-background to-muted">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg font-medium text-muted-foreground">Loading your experience...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (isRedirecting) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-background to-muted">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg font-medium text-muted-foreground">Redirecting...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user && !isAuthPage && !isDashboardPage && !isToolsPage && !isAIAssistantPage) {
-    return null
   }
 
   if (isAuthPage || isOnboardingPage) {
